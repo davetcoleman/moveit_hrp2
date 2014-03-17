@@ -1,0 +1,40 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Python stuff
+*.pyc
+
+# Data files
+*.dat
+
+# Emacs temp files
+.#*
+*~
+
+# Silly OSX Files
+.DS_Store
+
+# CSV Files of Data
+*.csv
+
+# MongoDB Temp Files
+default_warehouse_mongo_db/
+
+# Catkin Workspace
+/CMakeLists.txt
+
+# Images
+*.png
+*.jpg
+

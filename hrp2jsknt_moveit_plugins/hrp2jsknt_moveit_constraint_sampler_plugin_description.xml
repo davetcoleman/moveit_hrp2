@@ -1,0 +1,8 @@
+<library path="libhrp2jsknt_moveit_constraint_sampler">
+
+  <class name="hrp2jsknt_moveit_constraint_sampler/HRP2JSKNTConstraintSamplerAllocator" type="hrp2jsknt_moveit_constraint_sampler::HRP2JSKNTConstraintSamplerAllocator" base_class_type="constraint_samplers::ConstraintSamplerAllocator">
+    <description>
+    </description>
+  </class>
+
+</library>

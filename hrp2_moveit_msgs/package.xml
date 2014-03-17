@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package>
+  <name>hrp2_moveit_msgs</name>
+  <version>0.0.1</version>
+  <description>The hrp2_moveit_msgs package</description>
+
+  <maintainer email="davetcoleman@gmail.com">Dave Coleman</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">https://github.com/davetcoleman/hrp2_moveit</url>
+  <url type="butracker">https://github.com/davetcoleman/hrp2_moveit/issues</url>
+  <url type="repository">https://github.com/davetcoleman/hrp2_moveit/</url>
+
+  <author email="davetcoleman@gmail.com">Dave Coleman</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>moveit_msgs</build_depend>
+
+  <run_depend>moveit_msgs</run_depend>
+
+  <export>
+  </export>
+</package>

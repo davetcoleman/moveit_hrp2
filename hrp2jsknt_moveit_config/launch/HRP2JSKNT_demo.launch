@@ -1,0 +1,27 @@
+<launch>
+  <arg name="LOAD_ROBOT_DESCRIPTION" default="true" />
+  <arg name="PUBLISH_BASE_TF" default="false" />
+  <arg name="ALLOW_TRAJECTORY" default="true" />
+  <arg name="RUN_RVIZ" default="true" />
+  <arg name="RUN_DATABASE" default="false" />
+
+  <include file="$(find hrp2jsknt_moveit_config)/launch/planning_context.launch">
+    <arg name="load_robot_description" value="$(arg LOAD_ROBOT_DESCRIPTION)"/>
+  </include>
+
+  <node if="$(arg PUBLISH_BASE_TF)"
+        pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_0" args="0 0 0 0 0 0 /odom BODY 100" />
+
+  <include file="$(find hrp2jsknt_moveit_config)/launch/move_group.launch">
+    <arg name="allow_trajectory_execution" value="$(arg ALLOW_TRAJECTORY)"/>
+  </include>
+
+  <include if="$(arg RUN_RVIZ)"
+           file="$(find hrp2jsknt_moveit_config)/launch/moveit_rviz.launch">
+    <arg name="config" value="true"/>
+  </include>
+
+  <include if="$(arg RUN_DATABASE)"
+           file="$(find hrp2jsknt_moveit_config)/launch/default_warehouse_db.launch" />
+
+</launch>

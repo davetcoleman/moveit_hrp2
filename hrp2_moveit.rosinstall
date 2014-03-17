@@ -1,0 +1,26 @@
+#- git: {local-name: rtm-ros-robotics/openrtm_common/openrtm_aist_core, uri: 'https://github.com/start-jsk/openrtm_aist_core'}
+#- git: {local-name: rtm-ros-robotics/openrtm_common/openhrp3, uri: 'https://github.com/start-jsk/openhrp3'}
+#- git: {local-name: rtm-ros-robotics/openrtm_common/rtshell_core, uri: 'https://github.com/start-jsk/rtshell_core'}
+#- git: {local-name: rtm-ros-robotics/openrtm_common/hrpsys, uri: 'https://github.com/start-jsk/hrpsys'}
+# - git: {local-name: rtm-ros-robotics/openrtm_common/hrpsys, uri: 'https://github.com/k-okada/hrpsys', version: 'fix-fhs'}
+#- git: {local-name: rtm-ros-robotics/rtmros_common, uri: 'https://github.com/start-jsk/rtmros_common'}
+#- git: {local-name: rtm-ros-robotics/rtmros_tutorials, uri: 'https://github.com/start-jsk/rtmros_tutorials'}
+#- git: {local-name: rtm-ros-robotics/rtmros_gazebo, uri: 'https://github.com/start-jsk/rtmros_gazebo'}
+#- svn: {local-name: rtm-ros-robotics/openrtm_apps, uri: 'https://rtm-ros-robotics.googlecode.com/svn/trunk/openrtm_apps'}
+#- svn: {local-name: rtm-ros-robotics/agentsystem_ros_tutorials, uri: 'https://rtm-ros-robotics.googlecode.com/svn/trunk/agentsystem_ros_tutorials'}
+#- svn: {local-name: jsk-ros-pkg, uri: 'https://svn.code.sf.net/p/jsk-ros-pkg/code/trunk'}
+#- git: {local-name: jsk_common, uri: 'git@github.com:jsk-ros-pkg/jsk_common.git'}
+- git: {local-name: jsk_roseus, uri: 'https://github.com/jsk-ros-pkg/jsk_roseus'}
+- git: {local-name: baxter/baxter_common, uri: 'https://github.com/RethinkRobotics/baxter_common'}
+- git: {local-name: view_controller_msgs, uri: 'https://github.com/ros-visualization/view_controller_msgs',
+    version: hydro-devel}
+- git: {local-name: rviz_animated_view_controller, uri: 'https://github.com/ros-visualization/rviz_animated_view_controller',
+    version: hydro-devel}
+- git: {local-name: hrp2_moveit, uri: 'git@github.com:start-jsk/hrp2_moveit.git'}
+- git: {local-name: moveit_core, uri: 'git@github.com:davetcoleman/moveit_core.git',
+    version: kinematic_base_non_chains}
+- git: {local-name: moveit_ros, uri: 'git@github.com:davetcoleman/moveit_ros.git',
+    version: kinematic_base_non_chains}
+- git: {local-name: moveit_planners, uri: 'git@github.com:davetcoleman/moveit_planners.git',
+    version: hrp2_interpolation_dev}
+- git: {local-name: block_grasp_generator, uri: 'https://github.com/davetcoleman/block_grasp_generator', version: hydro-devel}

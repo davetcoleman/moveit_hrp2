@@ -1,0 +1,23 @@
+<launch>
+
+  <!-- Load the URDF, SRDF and other .yaml configuration files on the param server -->
+  <include file="$(find hrp2jsknt_moveit_config)/launch/planning_context.launch">
+    <arg name="load_robot_description" value="true"/>
+  </include>
+
+  <!-- If needed, broadcast static tf for robot root -->
+  <node pkg="tf" type="static_transform_publisher" name="virtual_joint_broadcaster_0" args="0 0 0 0 0 0 /world /odom 100" />
+
+  <arg name="debug" default="false" />
+  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+  <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
+
+  <arg name="config" default="true" />
+  <arg unless="$(arg config)" name="command_args" value="" />
+  <arg     if="$(arg config)" name="command_args" value="-d $(find hrp2jsknt_moveit_demos)/launch/moveit.rviz" />
+  
+  <node name="$(anon rviz)" launch-prefix="$(arg launch_prefix)" pkg="rviz" type="rviz" respawn="false"
+	args="$(arg command_args)" output="screen">
+  </node>
+
+</launch>

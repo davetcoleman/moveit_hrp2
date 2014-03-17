@@ -1,0 +1,29 @@
+<launch>
+
+  <include file="$(find hrp2jsknt_moveit_config)/launch/planning_context.launch">
+    <arg name="load_robot_description" value="true"/>
+  </include>
+
+  <!-- GDB Debug Option -->
+  <arg name="debug" default="false" />
+  <arg unless="$(arg debug)" name="launch_prefix" value="" />
+  <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
+
+  <arg name="mode" default="1" />
+
+  <!-- Planning Functionality -->
+  <include ns="hrp2jsknt_moveit_demos" file="$(find hrp2jsknt_moveit_config)/launch/planning_pipeline.launch.xml">
+    <arg name="pipeline" value="ompl" />
+  </include>
+
+  <node name="hrp2jsknt_moveit_demos" pkg="hrp2jsknt_moveit_demos" type="hrp2_demos" respawn="false" 
+	launch-prefix="$(arg launch_prefix)" output="screen" args="--mode $(arg mode)">
+
+    <!-- DTC Testing -->
+    <!--param name="constraint_samplers" value=""/-->
+    <param name="constraint_samplers" value="hrp2jsknt_moveit_constraint_sampler/HRP2JSKNTConstraintSamplerAllocator"/>
+
+    <rosparam command="load" file="$(find hrp2jsknt_moveit_config)/config/kinematics.yaml"/>
+  </node>
+
+</launch>

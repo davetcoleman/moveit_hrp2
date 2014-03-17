@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package>
+  <name>hrp2jsknt_moveit_demos</name>
+  <version>0.5.3</version>
+  <description>The hrp2jsknt_moveit_demos package</description>
+
+  <maintainer email="davetcoleman@gmail.com">Dave Coleman</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">https://github.com/davetcoleman/PACKAGE_NAME</url>
+  <url type="butracker">https://github.com/davetcoleman/PACKAGE_NAME/issues</url>
+  <url type="repository">https://github.com/davetcoleman/PACKAGE_NAME/</url>
+
+  <author email="davetcoleman@gmail.com">Dave Coleman</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>moveit_core</build_depend>
+  <build_depend>moveit_ros_planning_interface</build_depend>
+  <build_depend>interactive_markers</build_depend>
+  <build_depend>moveit_msgs</build_depend>
+  <build_depend>block_grasp_generator</build_depend>
+  
+  <run_depend>moveit_core</run_depend>
+  <run_depend>moveit_ros_planning_interface</run_depend>
+  <run_depend>interactive_markers</run_depend>
+  <run_depend>moveit_msgs</run_depend>
+  <run_depend>block_grasp_generator</run_depend>
+
+</package>

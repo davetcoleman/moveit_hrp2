@@ -1,0 +1,700 @@
+<?xml version="1.0" ?>
+<!--This does not replace URDF, and is not an extension of URDF.
+    This is a format for representing semantic information about the robot structure.
+    A URDF file must exist for this robot as well, where the joints and the links that are referenced are defined
+-->
+<robot name="HRP2JSKNT">
+    <!--GROUPS: Representation of a set of joints and links. This can be useful for specifying DOF to plan for, defining arms, end effectors, etc-->
+    <!--LINKS: When a link is specified, the parent joint of that link (if it exists) is automatically included-->
+    <!--JOINTS: When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
+    <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
+    <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
+    <group name="left_arm">
+        <joint name="LARM_JOINT0" />
+        <joint name="LARM_JOINT1" />
+        <joint name="LARM_JOINT2" />
+        <joint name="LARM_JOINT3" />
+        <joint name="LARM_JOINT4" />
+        <joint name="LARM_JOINT5" />
+        <joint name="LARM_JOINT6" />
+    </group>
+    <group name="left_arm_torso">
+        <joint name="LARM_JOINT0" />
+        <joint name="LARM_JOINT1" />
+        <joint name="LARM_JOINT2" />
+        <joint name="LARM_JOINT3" />
+        <joint name="LARM_JOINT4" />
+        <joint name="LARM_JOINT5" />
+        <joint name="LARM_JOINT6" />
+        <joint name="CHEST_JOINT0" />
+        <joint name="CHEST_JOINT1" />
+    </group>
+    <group name="head">
+        <joint name="HEAD_JOINT0" />
+        <joint name="HEAD_JOINT1" />
+    </group>
+    <group name="right_arm">
+        <joint name="RARM_JOINT0" />
+        <joint name="RARM_JOINT1" />
+        <joint name="RARM_JOINT2" />
+        <joint name="RARM_JOINT3" />
+        <joint name="RARM_JOINT4" />
+        <joint name="RARM_JOINT5" />
+        <joint name="RARM_JOINT6" />
+    </group>
+    <group name="right_arm_torso">
+        <joint name="RARM_JOINT0" />
+        <joint name="RARM_JOINT1" />
+        <joint name="RARM_JOINT2" />
+        <joint name="RARM_JOINT3" />
+        <joint name="RARM_JOINT4" />
+        <joint name="RARM_JOINT5" />
+        <joint name="RARM_JOINT6" />
+        <joint name="CHEST_JOINT0" />
+        <joint name="CHEST_JOINT1" />
+    </group>
+    <group name="whole_body">
+        <joint name="virtual_joint" />
+        <joint name="CHEST_JOINT0" />
+        <joint name="CHEST_JOINT1" />
+        <joint name="LARM_JOINT0" />
+        <joint name="LARM_JOINT1" />
+        <joint name="LARM_JOINT2" />
+        <joint name="LARM_JOINT3" />
+        <joint name="LARM_JOINT4" />
+        <joint name="LARM_JOINT5" />
+        <joint name="LARM_JOINT6" />
+        <joint name="RARM_JOINT0" />
+        <joint name="RARM_JOINT1" />
+        <joint name="RARM_JOINT2" />
+        <joint name="RARM_JOINT3" />
+        <joint name="RARM_JOINT4" />
+        <joint name="RARM_JOINT5" />
+        <joint name="RARM_JOINT6" />
+        <joint name="LLEG_JOINT0" />
+        <joint name="LLEG_JOINT1" />
+        <joint name="LLEG_JOINT2" />
+        <joint name="LLEG_JOINT3" />
+        <joint name="LLEG_JOINT4" />
+        <joint name="LLEG_JOINT5" />
+        <joint name="LLEG_JOINT6" />
+        <joint name="RLEG_JOINT0" />
+        <joint name="RLEG_JOINT1" />
+        <joint name="RLEG_JOINT2" />
+        <joint name="RLEG_JOINT3" />
+        <joint name="RLEG_JOINT4" />
+        <joint name="RLEG_JOINT5" />
+        <joint name="RLEG_JOINT6" />
+    </group>
+    <group name="left_hand">
+        <link name="L_INDEXMP_R_LINK" />
+        <link name="L_INDEXMP_P_LINK" />
+        <link name="L_INDEXPIP_R_LINK" />
+        <link name="L_MIDDLEPIP_R_LINK" />
+        <link name="L_THUMBCM_Y_LINK" />
+        <link name="L_THUMBCM_P_LINK" />
+    </group>
+    <group name="right_hand">
+        <link name="R_INDEXMP_R_LINK" />
+        <link name="R_INDEXMP_P_LINK" />
+        <link name="R_INDEXPIP_R_LINK" />
+        <link name="R_MIDDLEPIP_R_LINK" />
+        <link name="R_THUMBCM_Y_LINK" />
+        <link name="R_THUMBCM_P_LINK" />
+    </group>
+    <group name="left_foot">
+        <link name="LLEG_LINK6" />
+    </group>
+    <group name="right_foot">
+        <link name="RLEG_LINK6" />
+    </group>
+    <group name="left_leg">
+        <link name="LLEG_LINK0" />
+        <link name="LLEG_LINK1" />
+        <link name="LLEG_LINK2" />
+        <link name="LLEG_LINK3" />
+        <link name="LLEG_LINK4" />
+        <link name="LLEG_LINK5" />
+    </group>
+    <group name="right_leg">
+        <link name="RLEG_LINK0" />
+        <link name="RLEG_LINK1" />
+        <link name="RLEG_LINK2" />
+        <link name="RLEG_LINK3" />
+        <link name="RLEG_LINK4" />
+        <link name="RLEG_LINK5" />
+    </group>
+    <!--GROUP STATES: Purpose: Define a named state for a particular group, in terms of joint values. This is useful to define states like 'folded arms'-->
+    <group_state name="reset_left_arm" group="left_arm">
+        <joint name="LARM_JOINT0" value="0" />
+        <joint name="LARM_JOINT1" value="0" />
+        <joint name="LARM_JOINT2" value="0" />
+        <joint name="LARM_JOINT3" value="0" />
+        <joint name="LARM_JOINT4" value="0" />
+        <joint name="LARM_JOINT5" value="0" />
+        <joint name="LARM_JOINT6" value="0" />
+    </group_state>
+    <group_state name="reset_left_arm_torso" group="left_arm_torso">
+        <joint name="CHEST_JOINT0" value="0" />
+        <joint name="CHEST_JOINT1" value="0" />
+        <joint name="LARM_JOINT0" value="0" />
+        <joint name="LARM_JOINT1" value="0" />
+        <joint name="LARM_JOINT2" value="0" />
+        <joint name="LARM_JOINT3" value="0" />
+        <joint name="LARM_JOINT4" value="0" />
+        <joint name="LARM_JOINT5" value="0" />
+        <joint name="LARM_JOINT6" value="0" />
+    </group_state>
+    <group_state name="reset_right_arm" group="right_arm">
+        <joint name="RARM_JOINT0" value="0" />
+        <joint name="RARM_JOINT1" value="0" />
+        <joint name="RARM_JOINT2" value="0" />
+        <joint name="RARM_JOINT3" value="0" />
+        <joint name="RARM_JOINT4" value="0" />
+        <joint name="RARM_JOINT5" value="0" />
+        <joint name="RARM_JOINT6" value="0" />
+    </group_state>
+    <group_state name="reset_right_arm_torso" group="right_arm_torso">
+        <joint name="CHEST_JOINT0" value="0" />
+        <joint name="CHEST_JOINT1" value="0" />
+        <joint name="RARM_JOINT0" value="0" />
+        <joint name="RARM_JOINT1" value="0" />
+        <joint name="RARM_JOINT2" value="0" />
+        <joint name="RARM_JOINT3" value="0" />
+        <joint name="RARM_JOINT4" value="0" />
+        <joint name="RARM_JOINT5" value="0" />
+        <joint name="RARM_JOINT6" value="0" />
+    </group_state>
+    <group_state name="reset_head" group="head">
+        <joint name="HEAD_JOINT0" value="0" />
+        <joint name="HEAD_JOINT1" value="0" />
+    </group_state>
+    <group_state name="reset_whole_body" group="whole_body">
+        <joint name="CHEST_JOINT0" value="-0.00078" />
+        <joint name="CHEST_JOINT1" value="0.158016" />
+        <joint name="LARM_JOINT0" value="0.139904" />
+        <joint name="LARM_JOINT1" value="0.180551" />
+        <joint name="LARM_JOINT2" value="0.001654" />
+        <joint name="LARM_JOINT3" value="-0.490108" />
+        <joint name="LARM_JOINT4" value="0.021714" />
+        <joint name="LARM_JOINT5" value="0.002994" />
+        <joint name="LARM_JOINT6" value="-0.242081" />
+        <joint name="LLEG_JOINT0" value="0.00012" />
+        <joint name="LLEG_JOINT1" value="0.004331" />
+        <joint name="LLEG_JOINT2" value="-0.720431" />
+        <joint name="LLEG_JOINT3" value="1.47581" />
+        <joint name="LLEG_JOINT4" value="-0.755378" />
+        <joint name="LLEG_JOINT5" value="-0.004331" />
+        <joint name="LLEG_JOINT6" value="0.0" />
+        <joint name="RARM_JOINT0" value="0.144011" />
+        <joint name="RARM_JOINT1" value="-0.173863" />
+        <joint name="RARM_JOINT2" value="0.002969" />
+        <joint name="RARM_JOINT3" value="-0.501351" />
+        <joint name="RARM_JOINT4" value="-0.021444" />
+        <joint name="RARM_JOINT5" value="-0.011233" />
+        <joint name="RARM_JOINT6" value="-0.235356" />
+        <joint name="RLEG_JOINT0" value="0.000119" />
+        <joint name="RLEG_JOINT1" value="0.004325" />
+        <joint name="RLEG_JOINT2" value="-0.721202" />
+        <joint name="RLEG_JOINT3" value="1.47731" />
+        <joint name="RLEG_JOINT4" value="-0.756109" />
+        <joint name="RLEG_JOINT5" value="-0.004324" />
+        <joint name="RLEG_JOINT6" value="0.0" />
+    </group_state>
+    <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
+    <end_effector name="right_eef" parent_link="RARM_LINK6" group="right_hand" parent_group="right_arm" />
+    <end_effector name="left_eef" parent_link="LARM_LINK6" group="left_hand" parent_group="left_arm" />
+    <end_effector name="left_foot" parent_link="LLEG_LINK5" group="left_foot" parent_group="left_leg" />
+    <end_effector name="right_foot" parent_link="RLEG_LINK5" group="right_foot" parent_group="right_leg" />
+    <!--VIRTUAL JOINT: Purpose: this element defines a virtual joint between a robot link and an external frame of reference (considered fixed with respect to the robot)-->
+    <virtual_joint name="virtual_joint" type="floating" parent_frame="/odom" child_link="BODY" />
+    <virtual_joint name="foot_virtual" type="fixed" parent_frame="/odom" child_link="LLEG_LINK6" />
+    <!--PASSIVE JOINT: Purpose: this element is used to mark joints that are not actuated-->
+    <passive_joint name="virtual_joint" />
+    <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
+    <disable_collisions link1="BODY" link2="CHEST_LINK0" reason="Adjacent" />
+    <disable_collisions link1="BODY" link2="HEAD_LINK0" reason="Never" />
+    <disable_collisions link1="BODY" link2="HEAD_LINK1" reason="Never" />
+    <disable_collisions link1="BODY" link2="LARM_LINK0" reason="Never" />
+    <disable_collisions link1="BODY" link2="LARM_LINK1" reason="Never" />
+    <disable_collisions link1="BODY" link2="LLEG_LINK0" reason="Adjacent" />
+    <disable_collisions link1="BODY" link2="LLEG_LINK1" reason="Never" />
+    <disable_collisions link1="BODY" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="BODY" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="BODY" link2="RLEG_LINK0" reason="Adjacent" />
+    <disable_collisions link1="BODY" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="CHEST_LINK1" reason="Adjacent" />
+    <disable_collisions link1="CHEST_LINK0" link2="HEAD_LINK0" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="HEAD_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LARM_LINK0" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LARM_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LARM_LINK2" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LARM_LINK7" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LLEG_LINK0" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LLEG_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LLEG_LINK2" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LLEG_LINK3" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LLEG_LINK5" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="LLEG_LINK6" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RLEG_LINK5" reason="Never" />
+    <disable_collisions link1="CHEST_LINK0" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="HEAD_LINK0" reason="Adjacent" />
+    <disable_collisions link1="CHEST_LINK1" link2="HEAD_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="LARM_LINK0" reason="Adjacent" />
+    <disable_collisions link1="CHEST_LINK1" link2="LARM_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="LLEG_LINK0" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="LLEG_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="LLEG_LINK2" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="LLEG_LINK3" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="LLEG_LINK5" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="LLEG_LINK6" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="RARM_LINK0" reason="Adjacent" />
+    <disable_collisions link1="CHEST_LINK1" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="RLEG_LINK5" reason="Never" />
+    <disable_collisions link1="CHEST_LINK1" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="HEAD_LINK1" reason="Adjacent" />
+    <disable_collisions link1="HEAD_LINK0" link2="LARM_LINK0" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LARM_LINK1" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LARM_LINK2" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LARM_LINK3" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LLEG_LINK0" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LLEG_LINK1" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LLEG_LINK2" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LLEG_LINK3" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LLEG_LINK5" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="LLEG_LINK6" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RLEG_LINK5" reason="Never" />
+    <disable_collisions link1="HEAD_LINK0" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="LARM_LINK0" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="LARM_LINK1" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="LARM_LINK2" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="LLEG_LINK0" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="LLEG_LINK1" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="LLEG_LINK2" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="LLEG_LINK3" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="HEAD_LINK1" link2="RLEG_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LARM_LINK1" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK0" link2="LARM_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LARM_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LLEG_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LLEG_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="LLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RLEG_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK0" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LARM_LINK2" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK1" link2="LARM_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LLEG_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LLEG_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LLEG_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="LLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RLEG_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="R_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK1" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="LARM_LINK3" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK2" link2="LARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="LARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="LARM_LINK6" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="LARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="LLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="LLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="L_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="L_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="L_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="L_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK2" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="LARM_LINK4" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK3" link2="LARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="LARM_LINK6" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="LARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="LLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="LLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="L_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="L_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="L_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="L_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="L_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="L_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK3" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="LARM_LINK5" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK4" link2="LARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="L_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="L_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="L_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="L_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="L_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="L_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK4" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="LARM_LINK6" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK5" link2="LARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="L_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="L_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="L_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="L_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="L_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="L_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK5" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK6" link2="LARM_LINK7" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK6" link2="L_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK6" link2="L_INDEXMP_R_LINK" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK6" link2="L_MIDDLEPIP_R_LINK" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK6" link2="L_THUMBCM_Y_LINK" reason="Adjacent" />
+    <disable_collisions link1="LARM_LINK6" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK6" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK6" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="L_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="L_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="L_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="L_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="L_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="L_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RARM_LINK6" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="R_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="LARM_LINK7" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="LLEG_LINK1" reason="Adjacent" />
+    <disable_collisions link1="LLEG_LINK0" link2="LLEG_LINK3" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="LLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LLEG_LINK0" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="LLEG_LINK2" reason="Adjacent" />
+    <disable_collisions link1="LLEG_LINK1" link2="LLEG_LINK3" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="LLEG_LINK5" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="LLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LLEG_LINK1" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LLEG_LINK2" link2="LLEG_LINK3" reason="Adjacent" />
+    <disable_collisions link1="LLEG_LINK2" link2="LLEG_LINK4" reason="Never" />
+    <disable_collisions link1="LLEG_LINK2" link2="LLEG_LINK5" reason="Never" />
+    <disable_collisions link1="LLEG_LINK2" link2="LLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LLEG_LINK2" link2="L_MIDDLEPIP_R_LINK" reason="Default" />
+    <disable_collisions link1="LLEG_LINK2" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK2" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK2" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="LLEG_LINK2" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LLEG_LINK2" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK2" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK3" link2="LLEG_LINK4" reason="Adjacent" />
+    <disable_collisions link1="LLEG_LINK3" link2="LLEG_LINK5" reason="Default" />
+    <disable_collisions link1="LLEG_LINK3" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK3" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK3" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK3" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK4" link2="LLEG_LINK5" reason="Adjacent" />
+    <disable_collisions link1="LLEG_LINK4" link2="LLEG_LINK6" reason="Never" />
+    <disable_collisions link1="LLEG_LINK4" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK4" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK4" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LLEG_LINK4" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK4" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="LLEG_LINK4" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="LLEG_LINK5" link2="LLEG_LINK6" reason="Adjacent" />
+    <disable_collisions link1="LLEG_LINK6" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="LLEG_LINK6" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="LLEG_LINK6" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_P_LINK" link2="L_INDEXMP_R_LINK" reason="Adjacent" />
+    <disable_collisions link1="L_INDEXMP_P_LINK" link2="L_INDEXPIP_R_LINK" reason="Adjacent" />
+    <disable_collisions link1="L_INDEXMP_P_LINK" link2="L_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_P_LINK" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_P_LINK" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_P_LINK" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_P_LINK" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_P_LINK" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="L_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="L_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="L_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXMP_R_LINK" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="L_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="L_INDEXPIP_R_LINK" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="L_MIDDLEPIP_R_LINK" link2="L_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="L_MIDDLEPIP_R_LINK" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="L_MIDDLEPIP_R_LINK" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="L_MIDDLEPIP_R_LINK" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="L_MIDDLEPIP_R_LINK" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_P_LINK" link2="L_THUMBCM_Y_LINK" reason="Adjacent" />
+    <disable_collisions link1="L_THUMBCM_P_LINK" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_P_LINK" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_P_LINK" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_P_LINK" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_P_LINK" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_P_LINK" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_P_LINK" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_Y_LINK" link2="RARM_LINK0" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_Y_LINK" link2="RARM_LINK1" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_Y_LINK" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_Y_LINK" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_Y_LINK" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_Y_LINK" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_Y_LINK" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="L_THUMBCM_Y_LINK" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RARM_LINK1" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK0" link2="RARM_LINK2" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="RARM_LINK0" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="RARM_LINK1" link2="RARM_LINK2" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK1" link2="RARM_LINK3" reason="Never" />
+    <disable_collisions link1="RARM_LINK1" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="RARM_LINK1" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="RARM_LINK1" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="RARM_LINK1" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="RARM_LINK1" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="RARM_LINK1" link2="RLEG_LINK2" reason="Never" />
+    <disable_collisions link1="RARM_LINK1" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="RARM_LINK1" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="RARM_LINK3" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK2" link2="RARM_LINK4" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="RARM_LINK6" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK2" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="RARM_LINK4" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK3" link2="RARM_LINK5" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="RARM_LINK6" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="RLEG_LINK0" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="RLEG_LINK1" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="R_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK3" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK4" link2="RARM_LINK5" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK4" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="RARM_LINK4" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK4" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK4" link2="R_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK4" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK4" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK4" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK5" link2="RARM_LINK6" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK5" link2="RARM_LINK7" reason="Never" />
+    <disable_collisions link1="RARM_LINK5" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK5" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK5" link2="R_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK5" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK5" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK5" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK6" link2="RARM_LINK7" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK6" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK6" link2="R_INDEXMP_R_LINK" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK6" link2="R_MIDDLEPIP_R_LINK" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK6" link2="R_THUMBCM_Y_LINK" reason="Adjacent" />
+    <disable_collisions link1="RARM_LINK7" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="RARM_LINK7" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="RARM_LINK7" link2="R_INDEXMP_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK7" link2="R_INDEXMP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK7" link2="R_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK7" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK7" link2="R_THUMBCM_P_LINK" reason="Never" />
+    <disable_collisions link1="RARM_LINK7" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="RLEG_LINK0" link2="RLEG_LINK1" reason="Adjacent" />
+    <disable_collisions link1="RLEG_LINK0" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="RLEG_LINK0" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="RLEG_LINK0" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="RLEG_LINK1" link2="RLEG_LINK2" reason="Adjacent" />
+    <disable_collisions link1="RLEG_LINK1" link2="RLEG_LINK3" reason="Never" />
+    <disable_collisions link1="RLEG_LINK1" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="RLEG_LINK1" link2="RLEG_LINK5" reason="Never" />
+    <disable_collisions link1="RLEG_LINK1" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="RLEG_LINK2" link2="RLEG_LINK3" reason="Adjacent" />
+    <disable_collisions link1="RLEG_LINK2" link2="RLEG_LINK4" reason="Never" />
+    <disable_collisions link1="RLEG_LINK2" link2="RLEG_LINK5" reason="Never" />
+    <disable_collisions link1="RLEG_LINK2" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="RLEG_LINK2" link2="R_MIDDLEPIP_R_LINK" reason="Default" />
+    <disable_collisions link1="RLEG_LINK3" link2="RLEG_LINK4" reason="Adjacent" />
+    <disable_collisions link1="RLEG_LINK3" link2="RLEG_LINK5" reason="Default" />
+    <disable_collisions link1="RLEG_LINK4" link2="RLEG_LINK5" reason="Adjacent" />
+    <disable_collisions link1="RLEG_LINK4" link2="RLEG_LINK6" reason="Never" />
+    <disable_collisions link1="RLEG_LINK5" link2="RLEG_LINK6" reason="Adjacent" />
+    <disable_collisions link1="R_INDEXMP_P_LINK" link2="R_INDEXMP_R_LINK" reason="Adjacent" />
+    <disable_collisions link1="R_INDEXMP_P_LINK" link2="R_INDEXPIP_R_LINK" reason="Adjacent" />
+    <disable_collisions link1="R_INDEXMP_P_LINK" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="R_INDEXMP_R_LINK" link2="R_INDEXPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="R_INDEXMP_R_LINK" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="R_INDEXMP_R_LINK" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="R_INDEXPIP_R_LINK" link2="R_MIDDLEPIP_R_LINK" reason="Never" />
+    <disable_collisions link1="R_MIDDLEPIP_R_LINK" link2="R_THUMBCM_Y_LINK" reason="Never" />
+    <disable_collisions link1="R_THUMBCM_P_LINK" link2="R_THUMBCM_Y_LINK" reason="Adjacent" />
+</robot>
