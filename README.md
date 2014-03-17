@@ -1,9 +1,7 @@
 hrp2_moveit
 ===========
 
-Workspace for MoveIt! manipulation integration with HRP2 and HRP2NT.
-
-Private because its has the URDFs of HRP2 in it.
+Workspace for MoveIt! manipulation integration with HRP2NT. Note that the HRP2 model (URDF) is private, so this repo is not useful unless you have access to hrp2jsknt_description.
 
 ## Install
 
@@ -40,6 +38,8 @@ To use this repo:
     wstool update
     ```
 
+* Add the private package hrp2jstnt_description if you have access (sorry).
+
 * Install dependencies
     ```
     rosdep install --from-paths src --ignore-src --rosdistro hydro -y
@@ -53,11 +53,10 @@ To use this repo:
     catkin_make
     ```
 
-* Build ROS messages into LISP version
+* Build necessary ROS messages into LISP version
     ```
     rosrun roseus generate-all-msg-srv.sh moveit_msgs sensor_msgs geometry_msgs trajectory_msgs std_msgs actionlib_msgs visualization_msgs std_srvs hrp2_moveit_msgs
     ```
-    *Replace moveit_msgs with whatever messages you need built
   
 ## Instructions
 
