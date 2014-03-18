@@ -12,14 +12,6 @@ To use this repo:
     sudo apt-get install python-wstool
     ```
 
-* Install other Ubuntu dependencies (required by jsk-ros-pkg, not this repo)
-    ```	  
-    sudo apt-get install -y libomniorb4-dev omniidl libomniorb4* omni* libblas* liblapack* f2c omniidl-python omniorb-nameserver libomniorb4-1-dbg libomniorb4-dev omniorb omniorb-idl python-omniorb-dbg python-omniorb-doc
-    sudo apt-get install -y gsfonts-x11 texlive-fonts-extra xfonts-100dpi xfonts-75dpi xfonts-100dpi-transcoded xfonts-75dpi-transcoded
-    sudo apt-get install -y openjdk-7-jre openjdk-7-jdk 
-    sudo apt-get install -y ros-hydro-ps3joy ros-hydro-rosjava-build-tools drcsim-hydro ros-hydro-moveit-full
-    ```
-
 * Create a catkin workspace
 
     ```
@@ -42,7 +34,7 @@ To use this repo:
 
 * Install dependencies
     ```
-    rosdep install --from-paths src --ignore-src --rosdistro hydro -y
+    rosdep install --from-paths src --ignore-src --rosdistro hydro -y -r
     ```
     *This may not work well if you have rosbuild/pre-Hydro packages in your repository
 
@@ -56,6 +48,14 @@ To use this repo:
 * Build necessary ROS messages into LISP version
     ```
     rosrun roseus generate-all-msg-srv.sh moveit_msgs sensor_msgs geometry_msgs trajectory_msgs std_msgs actionlib_msgs visualization_msgs std_srvs hrp2_moveit_msgs
+    ```
+
+* Only if you have issues - try installing these other Ubuntu dependencies (required by jsk-ros-pkg, not this repo)
+    ```	  
+    sudo apt-get install -y libomniorb4-dev omniidl libomniorb4* omni* libblas* liblapack* f2c omniidl-python omniorb-nameserver libomniorb4-1-dbg libomniorb4-dev omniorb omniorb-idl python-omniorb-dbg python-omniorb-doc
+    sudo apt-get install -y gsfonts-x11 texlive-fonts-extra xfonts-100dpi xfonts-75dpi xfonts-100dpi-transcoded xfonts-75dpi-transcoded
+    sudo apt-get install -y openjdk-7-jre openjdk-7-jdk 
+    sudo apt-get install -y ros-hydro-ps3joy ros-hydro-rosjava-build-tools drcsim-hydro ros-hydro-moveit-full ros-hydro-actionlib-tutorials    
     ```
   
 ## Instructions
