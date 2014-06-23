@@ -185,7 +185,7 @@
         <joint name="LLEG_JOINT3" value="1.47581" />
         <joint name="LLEG_JOINT4" value="-0.755378" />
         <joint name="LLEG_JOINT5" value="-0.004331" />
-        <joint name="LLEG_JOINT6" value="0.0" />
+        <joint name="LLEG_JOINT6" value="0" />
         <joint name="RARM_JOINT0" value="0.144011" />
         <joint name="RARM_JOINT1" value="-0.173863" />
         <joint name="RARM_JOINT2" value="0.002969" />
@@ -199,7 +199,7 @@
         <joint name="RLEG_JOINT3" value="1.47731" />
         <joint name="RLEG_JOINT4" value="-0.756109" />
         <joint name="RLEG_JOINT5" value="-0.004324" />
-        <joint name="RLEG_JOINT6" value="0.0" />
+        <joint name="RLEG_JOINT6" value="0" />
     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="right_eef" parent_link="RARM_LINK6" group="right_hand" parent_group="right_arm" />
