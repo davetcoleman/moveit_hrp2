@@ -1,36 +1,36 @@
 /*********************************************************************
- * Software License Agreement (BSD License)
- *
- *  Copyright (c) 2014, JSK, The University of Tokyo.
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions
- *  are met:
- *
- *   * Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above
- *     copyright notice, this list of conditions and the following
- *     disclaimer in the documentation and/or other materials provided
- *     with the distribution.
- *   * Neither the name of the JSK, The University of Tokyo nor the names of its
- *     contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- *********************************************************************/
+n * Software License Agreement (BSD License)
+*
+*  Copyright (c) 2014, JSK, The University of Tokyo.
+*  All rights reserved.
+*
+*  Redistribution and use in source and binary forms, with or without
+*  modification, are permitted provided that the following conditions
+*  are met:
+*
+*   * Redistributions of source code must retain the above copyright
+*     notice, this list of conditions and the following disclaimer.
+*   * Redistributions in binary form must reproduce the above
+*     copyright notice, this list of conditions and the following
+*     disclaimer in the documentation and/or other materials provided
+*     with the distribution.
+*   * Neither the name of the JSK, The University of Tokyo nor the names of its
+*     contributors may be used to endorse or promote products derived
+*     from this software without specific prior written permission.
+*
+*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+*  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+*  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+*  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+*  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+*  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+*  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+*  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+*  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+*  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+*  POSSIBILITY OF SUCH DAMAGE.
+*********************************************************************/
 
 /* Author: Dave Coleman
    Desc:   Testing program for recieving walking gaits for JSK lisp code
@@ -206,7 +206,6 @@ public:
 
   void genRandMoveItPlan()
   {
-    // Set to slightly bent knees position
     setStateToGroupPose(goal_state_,  "reset_whole_body");
     setStateToGroupPose(robot_state_, "reset_whole_body");
 
@@ -298,35 +297,87 @@ public:
       //ROS_DEBUG_STREAM_NAMED("temp","recieved trajectory: " << response.trajectory);
 
       visual_tools_->publishTrajectoryPath(response.trajectory);
-
-      // Allow time to send trajectory
-      sleep_time_.sleep();
-
-      ros::Duration(1.0).sleep();
     }
   }
 
-  void genRandWalkingJumps()
+  /* RETIRED
+     void genRandWalkingJumps()
+     {
+     // Set to crouching position
+     setStateToGroupPose(goal_state_,  "reset_whole_body");
+     setStateToGroupPose(robot_state_, "reset_whole_body");
+
+     // Generate random goal positions
+     ros::Rate loop_rate(1);
+
+     for (int counter=0; counter<10 && ros::ok(); counter++)
+     {
+     ROS_WARN_STREAM_NAMED("temp","RUN " << counter << " ------------------------------");
+     setStateXYTheta(goal_state_);
+     visual_tools_->publishRobotState(robot_state_);
+     }
+     // let ROS send the message, then wait a while
+     ros::spinOnce();
+     loop_rate.sleep();
+
+     // Copy the last goal state to our new current state
+     *robot_state_ = *goal_state_;
+     }
+  */
+
+  // Plan with MoveIt + Lightning for different arm positions
+  void genLightningPlans() // zebra
   {
-    // Set to crouching position
-    setStateToGroupPose(goal_state_,  "reset_whole_body");
-    setStateToGroupPose(robot_state_, "reset_whole_body");
+    robot_state_->setToDefaultValues();
+    goal_state_->setToDefaultValues();
 
-    // Generate random goal positions
-    ros::Rate loop_rate(1);
+    static const std::string left_arm_group = "left_arm";
 
-    for (int counter=0; counter<10 && ros::ok(); counter++)
+    // Get an arm to plan with
+    const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup(left_arm_group);
+    goal_state_->setToRandomPositions(left_arm);
+
+    visual_tools_->publishRobotState(goal_state_);
+
+    moveit_msgs::MotionPlanResponse response;
+
+    // Create motion planning request
+    planning_interface::MotionPlanRequest req;
+    planning_interface::MotionPlanResponse res;
+
+    // Start state
+    moveit::core::robotStateToRobotStateMsg(*robot_state_, req.start_state);
+
+    // Goal constraint
+    double tolerance_pose = 0.0001;
+    moveit_msgs::Constraints goal_constraint =
+      kinematic_constraints::constructGoalConstraints(*goal_state_, left_arm, tolerance_pose, tolerance_pose);
+    req.goal_constraints.push_back(goal_constraint);
+
+    // Other settings
+    req.planner_id = "RRTConnectkConfigDefault";
+    req.group_name = left_arm_group;
+    req.num_planning_attempts = 1;
+    req.allowed_planning_time = 30;
+
+    // Call pipeline
+    planning_pipeline_->generatePlan(planning_scene_, req, res);
+
+    // Check that the planning was successful
+    if(res.error_code_.val != res.error_code_.SUCCESS)
     {
-      ROS_WARN_STREAM_NAMED("temp","RUN " << counter << " ------------------------------");
-      setStateXYTheta(goal_state_);
-      visual_tools_->publishRobotState(robot_state_);
+      ROS_ERROR("Could not compute plan successfully =======================================================");
+      ROS_INFO_STREAM_NAMED("temp","Attempting to visualize trajectory anyway...");
     }
-    // let ROS send the message, then wait a while
-    ros::spinOnce();
-    loop_rate.sleep();
 
-    // Copy the last goal state to our new current state
-    *robot_state_ = *goal_state_;
+    response.trajectory = moveit_msgs::RobotTrajectory();
+    res.getMessage(response);
+
+    // Visualize the trajectory
+    ROS_INFO("Visualizing the trajectory");
+    ROS_DEBUG_STREAM_NAMED("temp","recieved trajectory: " << response.trajectory);
+
+    visual_tools_->publishTrajectoryPath(response.trajectory);
   }
 
   // Send to walking server to generate footsteps
@@ -398,11 +449,11 @@ public:
         {
           // The corresponding robot state (copy from request)
           /*
-          display_trajectory_msg_.trajectory_start = walking_srv.request.start_state;
-          display_trajectory_msg_.trajectory.clear();
-          display_trajectory_msg_.trajectory.push_back();
-          // TODO: remove and only use moveit_visual_tools
-          robot_trajectory_publisher_.publish(display_trajectory_msg_);
+            display_trajectory_msg_.trajectory_start = walking_srv.request.start_state;
+            display_trajectory_msg_.trajectory.clear();
+            display_trajectory_msg_.trajectory.push_back();
+            // TODO: remove and only use moveit_visual_tools
+            robot_trajectory_publisher_.publish(display_trajectory_msg_);
           */
           visual_tools_->publishTrajectoryPath(walking_srv.response.trajectory);
         }
@@ -473,11 +524,11 @@ public:
       ROS_INFO("Visualizing the trajectory");
       //ROS_DEBUG_STREAM_NAMED("temp","recieved trajectory: " << response.trajectory);
       /*
-      display_trajectory_msg_.trajectory_start = response.trajectory_start;
-      display_trajectory_msg_.trajectory.clear();
-      display_trajectory_msg_.trajectory.push_back(response.trajectory);
-      // TODO: remove and only use moveit_visual_tools
-      robot_trajectory_publisher_.publish(display_trajectory_msg_);
+        display_trajectory_msg_.trajectory_start = response.trajectory_start;
+        display_trajectory_msg_.trajectory.clear();
+        display_trajectory_msg_.trajectory.push_back(response.trajectory);
+        // TODO: remove and only use moveit_visual_tools
+        robot_trajectory_publisher_.publish(display_trajectory_msg_);
       */
       visual_tools_->publishTrajectoryPath(response.trajectory);
       // Allow time to send trajectory
@@ -549,7 +600,7 @@ public:
     }
   }
 
-  void genSimpleArmIKRequests() // zebra
+  void genSimpleArmIKRequests()
   {
     robot_state_->setToDefaultValues();
     goal_state_->setToDefaultValues();
@@ -568,9 +619,38 @@ public:
     double timeout = 5;
     goal_state_->setFromIK(left_arm, left_eef_pose, attempts, timeout);
 
+    // Error check that the values are the same
+    Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
+
+    if (!poseIsSimilar(left_eef_pose, left_eef_pose_new))
+    {
+      ROS_ERROR_STREAM_NAMED("temp","Poses are not similar.");
+    }
+
     // Show the new robot state
-    ros::Duration(2).sleep();
+    ros::Duration(0.25).sleep();
     visual_tools_->publishRobotState(goal_state_);
+  }
+
+  bool poseIsSimilar(const Eigen::Affine3d &pose1, const Eigen::Affine3d &pose2)
+  {
+    geometry_msgs::Pose p1 = moveit_visual_tools::VisualTools::convertPose(pose1);
+    geometry_msgs::Pose p2 = moveit_visual_tools::VisualTools::convertPose(pose2);
+
+    double similarity_threshold = 0.01;
+    if (
+      abs(p1.position.x - p2.position.x) > similarity_threshold ||
+      abs(p1.position.y - p2.position.y) > similarity_threshold ||
+      abs(p1.position.z - p2.position.z) > similarity_threshold ||
+      abs(p1.orientation.x - p2.orientation.x) > similarity_threshold ||
+      abs(p1.orientation.y - p2.orientation.y) > similarity_threshold ||
+      abs(p1.orientation.z - p2.orientation.z) > similarity_threshold ||
+      abs(p1.orientation.w - p2.orientation.w) > similarity_threshold
+    )
+    {
+      return false;
+    }
+    return true;
   }
 
   void setStateXYTheta(robot_state::RobotStatePtr &goal_state)
@@ -943,8 +1023,8 @@ int main(int argc, char **argv)
           client.genRandWalking();
           break;
         case 3:
-          ROS_WARN_STREAM_NAMED("demos","3 - Generate random positions");
-          client.genRandWalkingJumps();
+          ROS_WARN_STREAM_NAMED("demos","3 - Plan with MoveIt + Lightning for different arm positions");
+          client.genLightningPlans();
           break;
         case 4:
           ROS_WARN_STREAM_NAMED("demos","4 - Generate random positions and plan to them with MoveIt (no walking)");
@@ -973,7 +1053,7 @@ int main(int argc, char **argv)
       if (loop)
       {
         mode++;
-        if (mode > 6)
+        if (mode > 8)
           mode = 1;
       }
     } while (loop && ros::ok());
@@ -983,7 +1063,7 @@ int main(int argc, char **argv)
       break;
 
     // Prompt user
-    std::cout << "Last mode was " << mode << ". Next demo mode (0-7, 9 to quit):";
+    std::cout << "Last mode was " << mode << ". Next demo mode (0-8, 9 to quit):";
     std::cin >> mode;
     if (mode == 9)
       break;

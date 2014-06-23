@@ -20,8 +20,8 @@
 	launch-prefix="$(arg launch_prefix)" output="screen" args="--mode $(arg mode)">
 
     <!-- DTC Testing -->
-    <!--param name="constraint_samplers" value=""/-->
-    <param name="constraint_samplers" value="hrp2jsknt_moveit_constraint_sampler/HRP2JSKNTConstraintSamplerAllocator"/>
+    <param name="constraint_samplers" value=""/>
+    <!--param name="constraint_samplers" value="hrp2jsknt_moveit_constraint_sampler/HRP2JSKNTConstraintSamplerAllocator"/-->
 
     <rosparam command="load" file="$(find hrp2jsknt_moveit_config)/config/kinematics.yaml"/>
   </node>
