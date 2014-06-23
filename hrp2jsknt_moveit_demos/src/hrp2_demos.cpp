@@ -34,7 +34,7 @@
 
 /* Author: Dave Coleman
    Desc:   Testing program for recieving walking gaits for JSK lisp code
-           as well as planning biped walking motions in MoveIt/OMPL
+   as well as planning biped walking motions in MoveIt/OMPL
 */
 
 #include <ros/ros.h>
@@ -58,8 +58,8 @@
 
 #include <hrp2_moveit_msgs/GetWalkingMotion.h>
 
-// Block grasp generator
-#include <block_grasp_generator/visualization_tools.h>
+// Helper for Rviz
+#include <moveit_visual_tools/visual_tools.h>
 
 namespace hrp2jsknt_moveit_demos
 {
@@ -78,6 +78,7 @@ public:
     , robot_model_loader_(ROBOT_DESCRIPTION) // load the URDF
   {
     // Create publishers for rviz
+    // TODO: remove and only use moveit_visual_tools
     robot_state_publisher_ = nh_.advertise<moveit_msgs::DisplayRobotState>( "/hrp2_demos", 1 );
     robot_trajectory_publisher_ = nh_.advertise<moveit_msgs::DisplayTrajectory>("/hrp2_demos_trajectory", 1, true);
 
@@ -130,11 +131,9 @@ public:
       ROS_ERROR_STREAM_NAMED("demos","Could not load right leg group");
 
     // Load the Robot Viz Tools for publishing to Rviz
-    visual_tools_.reset(new block_grasp_generator::VisualizationTools("/odom","visualization_marker"));
+    visual_tools_.reset(new moveit_visual_tools::VisualTools("/odom","/visual_marker"));
     visual_tools_->setLifetime(10.0);
-    visual_tools_->setMuted(false);
     //visual_tools_->setEEGroupName(grasp_data_.ee_group_);
-    visual_tools_->setPlanningGroupName(PLANNING_GROUP);
 
     // Start looping
     ros::Rate loop_rate(100);
@@ -164,8 +163,8 @@ public:
       right_foot_position_new = floor_z * base_link * right_foot_position;
 
       // Show the desired footstep location
-      visual_tools_->publishArrow(left_foot_position_new, block_grasp_generator::RED, block_grasp_generator::LARGE);
-      visual_tools_->publishArrow(right_foot_position_new, block_grasp_generator::GREEN, block_grasp_generator::LARGE);
+      visual_tools_->publishArrow(left_foot_position_new, moveit_visual_tools::RED, moveit_visual_tools::LARGE);
+      visual_tools_->publishArrow(right_foot_position_new, moveit_visual_tools::GREEN, moveit_visual_tools::LARGE);
 
       // Now solve for one leg
       if (robot_state_->setFromIK(left_leg_group, left_foot_position_new, 10, 0.1))
@@ -227,7 +226,7 @@ public:
       // Reset
       hideRobot();
       ros::Duration(1.0).sleep();
-      
+
       // Make goal state crouching
       setStateCrouching(goal_state_);
       // Move virtual_joint in XY
@@ -262,18 +261,18 @@ public:
 
       // Path constraint - Keep the body link from rotating too much
       /*
-      moveit_msgs::OrientationConstraint oc1;
-      oc1.header.frame_id = "/odom";
-      oc1.orientation.x = 0;
-      oc1.orientation.y = 0;
-      oc1.orientation.z = 0;
-      oc1.orientation.w = 1;
-      oc1.link_name = std::string("BODY");
-      oc1.absolute_x_axis_tolerance = 0.1;
-      oc1.absolute_y_axis_tolerance = 0.1;
-      oc1.absolute_z_axis_tolerance = 0.1;
-      oc1.weight = 1;
-      req.path_constraints.orientation_constraints.push_back(oc1); // TODO: make this work
+        moveit_msgs::OrientationConstraint oc1;
+        oc1.header.frame_id = "/odom";
+        oc1.orientation.x = 0;
+        oc1.orientation.y = 0;
+        oc1.orientation.z = 0;
+        oc1.orientation.w = 1;
+        oc1.link_name = std::string("BODY");
+        oc1.absolute_x_axis_tolerance = 0.1;
+        oc1.absolute_y_axis_tolerance = 0.1;
+        oc1.absolute_z_axis_tolerance = 0.1;
+        oc1.weight = 1;
+        req.path_constraints.orientation_constraints.push_back(oc1); // TODO: make this work
       */
 
       // Goal constraint
@@ -308,6 +307,7 @@ public:
       display_trajectory_msg_.trajectory_start = response.trajectory_start;
       display_trajectory_msg_.trajectory.clear();
       display_trajectory_msg_.trajectory.push_back(response.trajectory);
+      // TODO: remove and only use moveit_visual_tools
       robot_trajectory_publisher_.publish(display_trajectory_msg_);
 
       // Allow time to send trajectory
@@ -402,7 +402,7 @@ public:
             last_good = walking_srv.response.trajectory.joint_trajectory.points[i];
           }
         }
-       
+
         ROS_DEBUG_STREAM("Service response recieved, message: \n" << walking_srv.response);
 
         if (true) // use moveit's built in trajectory publisher
@@ -411,6 +411,7 @@ public:
           display_trajectory_msg_.trajectory_start = walking_srv.request.start_state;
           display_trajectory_msg_.trajectory.clear();
           display_trajectory_msg_.trajectory.push_back(walking_srv.response.trajectory);
+          // TODO: remove and only use moveit_visual_tools
           robot_trajectory_publisher_.publish(display_trajectory_msg_);
         }
         else // use our custom one
@@ -430,6 +431,7 @@ public:
             ROS_INFO_STREAM_NAMED("temp","trajectory point " << traj_pt << " is: \n" << robot_traj.getWayPoint(traj_pt));
             // send the message to the RobotState display
             robot_state::robotStateToRobotStateMsg(robot_traj.getWayPoint(traj_pt), display_robot_msg_.state);
+            // TODO: remove and only use moveit_visual_tools
             robot_state_publisher_.publish( display_robot_msg_ );
 
             // let ROS send the message, then wait a while
@@ -452,7 +454,7 @@ public:
 
     } // for
 
-  } 
+  }
 
   // Plan robot moving to crouching position
   void genCrouching()
@@ -482,6 +484,7 @@ public:
       display_trajectory_msg_.trajectory_start = response.trajectory_start;
       display_trajectory_msg_.trajectory.clear();
       display_trajectory_msg_.trajectory.push_back(response.trajectory);
+      // TODO: remove and only use moveit_visual_tools
       robot_trajectory_publisher_.publish(display_trajectory_msg_);
       // Allow time to send trajectory
       sleep_time_.sleep();
@@ -557,6 +560,7 @@ public:
   {
     // send the message to the RobotState display
     robot_state::robotStateToRobotStateMsg(*robot_state, display_robot_msg_.state);
+    // TODO: remove and only use moveit_visual_tools
     robot_state_publisher_.publish( display_robot_msg_ );
     //ROS_DEBUG_STREAM_NAMED("no_steps","publishing message " << display_robot_msg_);
     ros::spinOnce();
@@ -565,11 +569,11 @@ public:
   void setStateXYTheta(robot_state::RobotStatePtr &goal_state)
   {
     double x = goal_state->getVariablePosition("virtual_joint/trans_x");
-    x += fRand(0,0.25);
+    x += moveit_visual_tools::dRand(0,0.25);
     goal_state->setVariablePosition("virtual_joint/trans_x",x);
 
     double y = goal_state->getVariablePosition("virtual_joint/trans_y");
-    y += fRand(0,0.25);
+    y += moveit_visual_tools::dRand(0,0.25);
     goal_state->setVariablePosition("virtual_joint/trans_y",y);
 
     // Rotation
@@ -578,7 +582,7 @@ public:
       goal_state->getVariablePosition("virtual_joint/rot_x"),
       goal_state->getVariablePosition("virtual_joint/rot_y"),
       goal_state->getVariablePosition("virtual_joint/rot_z"));
-    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(fRand(-20,20) * M_PI / 180, Eigen::Vector3f::UnitZ()));
+    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::dRand(-20,20) * M_PI / 180, Eigen::Vector3f::UnitZ()));
     q = q * rotate;
 
     goal_state->setVariablePosition("virtual_joint/rot_x",q.x());
@@ -590,23 +594,23 @@ public:
   void setStateComplex(robot_state::RobotStatePtr &goal_state)
   {
     double x = goal_state->getVariablePosition("virtual_joint/trans_x");
-    //x += fRand(0,0.25);
+    //x += moveit_visual_tools::dRand(0,0.25);
     x = 1;
     goal_state->setVariablePosition("virtual_joint/trans_x",x);
 
     double y = goal_state->getVariablePosition("virtual_joint/trans_y");
-    //y += fRand(0,0.25);
+    //y += moveit_visual_tools::dRand(0,0.25);
     y = 0.5;
     goal_state->setVariablePosition("virtual_joint/trans_y",y);
 
     /*
     // Rotation
     Eigen::Quaternion<float>q(
-      goal_state->getVariablePosition("virtual_joint/rot_w"),
-      goal_state->getVariablePosition("virtual_joint/rot_x"),
-      goal_state->getVariablePosition("virtual_joint/rot_y"),
-      goal_state->getVariablePosition("virtual_joint/rot_z"));
-    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(fRand(-20,20) * M_PI / 180, Eigen::Vector3f::UnitZ()));
+    goal_state->getVariablePosition("virtual_joint/rot_w"),
+    goal_state->getVariablePosition("virtual_joint/rot_x"),
+    goal_state->getVariablePosition("virtual_joint/rot_y"),
+    goal_state->getVariablePosition("virtual_joint/rot_z"));
+    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::dRand(-20,20) * M_PI / 180, Eigen::Vector3f::UnitZ()));
     q = q * rotate;
 
     goal_state->setVariablePosition("virtual_joint/rot_x",q.x());
@@ -632,15 +636,15 @@ public:
   void setStateInPlace(robot_state::RobotStatePtr &goal_state)
   {
     double x = goal_state->getVariablePosition("virtual_joint/trans_x");
-    x = fRand(-1.0,1.0);
+    x = moveit_visual_tools::dRand(-1.0,1.0);
     goal_state->setVariablePosition("virtual_joint/trans_x",x);
 
     double y = goal_state->getVariablePosition("virtual_joint/trans_y");
-    y = fRand(-1.0,1.0);
+    y = moveit_visual_tools::dRand(-1.0,1.0);
     goal_state->setVariablePosition("virtual_joint/trans_y",y);
 
     double z = goal_state->getVariablePosition("virtual_joint/trans_z");
-    z = fRand(-0.38,0.0);
+    z = moveit_visual_tools::dRand(-0.38,0.0);
     goal_state->setVariablePosition("virtual_joint/trans_z",z);
 
     // Rotation
@@ -649,7 +653,7 @@ public:
       goal_state->getVariablePosition("virtual_joint/rot_x"),
       goal_state->getVariablePosition("virtual_joint/rot_y"),
       goal_state->getVariablePosition("virtual_joint/rot_z"));
-    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(fRand(-15,15) * M_PI / 180, Eigen::Vector3f::UnitZ()));
+    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::dRand(-15,15) * M_PI / 180, Eigen::Vector3f::UnitZ()));
     q = q * rotate;
 
     goal_state->setVariablePosition("virtual_joint/rot_x",q.x());
@@ -833,15 +837,6 @@ public:
     return true;
   }
 
-  /**
-   * \brief Get random double between min and max
-   */
-  double fRand(double fMin, double fMax)
-  {
-    double f = (double)rand() / RAND_MAX;
-    return fMin + f * (fMax - fMin);
-  }
-
   void createBlankState()
   {
     // Copy the robot state then move it way into the distance
@@ -874,7 +869,9 @@ private:
   boost::shared_ptr<ros::ServiceClient> walking_service_client_;
   std::string walking_service_name_;
 
+  // TODO: remove and only use moveit_visual_tools
   ros::Publisher robot_state_publisher_;
+  // TODO: remove and only use moveit_visual_tools
   ros::Publisher robot_trajectory_publisher_;
   moveit_msgs::DisplayRobotState display_robot_msg_;
   moveit_msgs::DisplayTrajectory display_trajectory_msg_;
@@ -891,7 +888,7 @@ private:
   planning_pipeline::PlanningPipelinePtr planning_pipeline_;
 
   // For visualizing things in rviz
-  block_grasp_generator::VisualizationToolsPtr visual_tools_;
+  moveit_visual_tools::VisualToolsPtr visual_tools_;
 
   ros::Duration sleep_time_;
 

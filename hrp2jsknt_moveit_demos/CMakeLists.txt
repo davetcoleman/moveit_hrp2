@@ -6,7 +6,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_planning 
   moveit_ros_planning_interface 
   pluginlib
-  block_grasp_generator
+  moveit_visual_tools
   hrp2_moveit_msgs
 )
 
@@ -20,7 +20,7 @@ catkin_package(
     moveit_ros_planning_interface
     moveit_msgs
     interactive_markers
-    block_grasp_generator
+    moveit_visual_tools
 )
 
 ###########

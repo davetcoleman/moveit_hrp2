@@ -1,7 +1,0 @@
-- git: {local-name: moveit_hrp2, uri: 'git@github.com:davetcoleman/moveit_hrp2.git'}
-- git: {local-name: moveit_core, uri: 'git@github.com:davetcoleman/moveit_core.git', version: kinematic_base_non_chains}
-- git: {local-name: moveit_ros, uri: 'git@github.com:davetcoleman/moveit_ros.git', version: kinematic_base_non_chains}
-- git: {local-name: moveit_planners, uri: 'git@github.com:davetcoleman/moveit_planners.git', version: hrp2_interpolation_dev}
-- git: {local-name: block_grasp_generator, uri: 'https://github.com/davetcoleman/block_grasp_generator', version: hydro-devel}
-- git: {local-name: jsk_roseus, uri: 'https://github.com/jsk-ros-pkg/jsk_roseus'}
-

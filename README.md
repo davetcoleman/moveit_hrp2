@@ -16,17 +16,16 @@ To use this repo:
 
     ```
     mkdir -p ~/ros/ws_hrp2/src
-    cd ~/ros/ws_hrp2/src
+    cd ~/ros/ws_hrp2/src/
     catkin_init_workspace
     ```
 
 * Use the rosinstall file to pull in all necessary repositories.
-  This includes ``rtm-ros-robotics``, ``jsk-ros-pkg``, custom ``moveit`` repos, and this repository.
+  This includes various repos as needed to build at the time of this writing (based on what is available as debians)
 
     ```
-    cd ~/ros/ws_hrp2/src/
     wstool init .
-    wstool merge https://raw.github.com/start-jsk/hrp2_moveit/master/hrp2_moveit.rosinstall
+    wstool merge https://raw.githubusercontent.com/davetcoleman/moveit_hrp2/master/moveit_hrp2.rosinstall
     wstool update
     ```
 
@@ -47,7 +46,7 @@ To use this repo:
 
 * Build necessary ROS messages into LISP version
     ```
-    rosrun roseus generate-all-msg-srv.sh moveit_msgs sensor_msgs geometry_msgs trajectory_msgs std_msgs actionlib_msgs visualization_msgs std_srvs hrp2_moveit_msgs
+    rosrun roseus generate-all-msg-srv.sh moveit_msgs sensor_msgs geometry_msgs trajectory_msgs std_msgs actionlib_msgs visual_msgs std_srvs hrp2_moveit_msgs
     ```
 
 * Only if you have issues - try installing these other Ubuntu dependencies (required by jsk-ros-pkg, not this repo)
