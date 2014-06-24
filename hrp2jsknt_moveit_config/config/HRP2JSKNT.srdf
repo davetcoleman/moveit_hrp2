@@ -127,7 +127,6 @@
     <group name="upper_body">
         <group name="left_arm" />
         <group name="right_arm" />
-        <group name="torso" />
     </group>
     <group name="torso">
         <joint name="CHEST_JOINT0" />

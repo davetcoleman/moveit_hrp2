@@ -239,7 +239,7 @@ upper_body:
     - TRRTkConfigDefault
     - PRMkConfigDefault
     - PRMstarkConfigDefault
-  projection_evaluator: joints(CHEST_JOINT0,CHEST_JOINT1)
+  projection_evaluator: joints(LARM_JOINT0,LARM_JOINT1)
   longest_valid_segment_fraction: 0.05
 torso:
   planner_configs:
