@@ -1,0 +1,26 @@
+left_arm:
+  kinematics_solver: simple_kdl_kinematics_plugin/SimpleKDLKinematicsPlugin
+  kinematics_solver_search_resolution: 0.005
+  kinematics_solver_timeout: 0.005
+  kinematics_solver_attempts: 3
+#whole_body:
+#  kinematics_solver: srv_kinematics_plugin/SrvKinematicsPlugin
+#  kinematics_solver_search_resolution: 0.005
+#  kinematics_solver_timeout: 0.5
+#  kinematics_solver_attempts: 1
+#  kinematics_solver_ik_links:
+#    - RARM_LINK6
+#    - LARM_LINK6
+#    - RLEG_LINK5
+#    - LLEG_LINK5
+#  kinematics_solver_service_name: /solve_ik
+left_leg:
+  kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+  kinematics_solver_search_resolution: 0.005
+  kinematics_solver_timeout: 0.005
+  kinematics_solver_attempts: 3
+right_leg:
+  kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+  kinematics_solver_search_resolution: 0.005
+  kinematics_solver_timeout: 0.005
+  kinematics_solver_attempts: 3

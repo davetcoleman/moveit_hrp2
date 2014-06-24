@@ -85,7 +85,7 @@ public:
     planning_pipeline_.reset(new planning_pipeline::PlanningPipeline(robot_model_, nh_, "planning_plugin", "request_adapters"));
 
     // Get the configuration for the joints in the group
-    joint_model_group_ = robot_model_->getJointModelGroup(PLANNING_GROUP);
+    whole_body_group_ = robot_model_->getJointModelGroup(PLANNING_GROUP);
 
     // Create robot states
     robot_state_.reset(new robot_state::RobotState(robot_model_));
@@ -270,7 +270,7 @@ public:
       // Goal constraint
       double tolerance_pose = 0.0001;
       moveit_msgs::Constraints goal_constraint =
-        kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_, tolerance_pose, tolerance_pose);
+        kinematic_constraints::constructGoalConstraints(*goal_state_, whole_body_group_, tolerance_pose, tolerance_pose);
       req.goal_constraints.push_back(goal_constraint);
 
       // Other settings
@@ -546,7 +546,7 @@ public:
 
     for (int counter=0; counter<10 && ros::ok(); counter++)
     {
-      robot_state_->setToRandomPositions(joint_model_group_);
+      robot_state_->setToRandomPositions(whole_body_group_);
 
       visual_tools_->publishRobotState(robot_state_);
 
@@ -618,6 +618,7 @@ public:
     unsigned int attempts = 1;
     double timeout = 5;
     goal_state_->setFromIK(left_arm, left_eef_pose, attempts, timeout);
+    //goal_state_->setFromIK(whole_body_group_, left_eef_pose, attempts, timeout);
 
     // Error check that the values are the same
     Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
@@ -709,9 +710,9 @@ public:
 
   void setStateToGroupPose(robot_state::RobotStatePtr &state, const std::string& pose_name)
   {
-    if (!state->setToDefaultValues(joint_model_group_, pose_name))
+    if (!state->setToDefaultValues(whole_body_group_, pose_name))
     {
-      ROS_ERROR_STREAM_NAMED("demo","Failed to set pose '" << pose_name << "' for planning group '" << joint_model_group_->getName() << "'");
+      ROS_ERROR_STREAM_NAMED("demo","Failed to set pose '" << pose_name << "' for planning group '" << whole_body_group_->getName() << "'");
     }
   }
 
@@ -899,7 +900,7 @@ public:
     // Goal constraint
     double tolerance_pose = 0.0001;
     moveit_msgs::Constraints goal_constraint =
-      kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_, tolerance_pose, tolerance_pose);
+      kinematic_constraints::constructGoalConstraints(*goal_state_, whole_body_group_, tolerance_pose, tolerance_pose);
     req.goal_constraints.push_back(goal_constraint);
 
     // Other settings
@@ -965,7 +966,7 @@ private:
   robot_state::RobotStatePtr goal_state_;
   robot_state::RobotStatePtr blank_state_;
 
-  robot_model::JointModelGroup* joint_model_group_;
+  robot_model::JointModelGroup* whole_body_group_;
 
   planning_scene::PlanningScenePtr planning_scene_;
   planning_pipeline::PlanningPipelinePtr planning_pipeline_;
