@@ -1064,7 +1064,21 @@ int main(int argc, char **argv)
 
     // Prompt user
     std::cout << "Last mode was " << mode << ". Next demo mode (0-8, 9 to quit):";
-    std::cin >> mode;
+
+    // Account for just an enter key being pressed:
+    char c = std::cin.get();
+    if (c == '\n')
+    {
+      std::cout << "ENTER KEY PRESSED " << std::endl;
+    }
+    else
+    {
+      mode = c - '0';
+      std::cout << "key: " << c << " mode: " << mode << std::endl;
+      // eat enter key character
+      c = std::cin.get();
+    }
+
     if (mode == 9)
       break;
   }
