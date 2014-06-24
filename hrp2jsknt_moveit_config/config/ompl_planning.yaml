@@ -226,3 +226,33 @@ right_leg:
     - PRMstarkConfigDefault
   projection_evaluator: joints(RLEG_JOINT0,RLEG_JOINT1)
   longest_valid_segment_fraction: 0.05
+upper_body:
+  planner_configs:
+    - SBLkConfigDefault
+    - ESTkConfigDefault
+    - LBKPIECEkConfigDefault
+    - BKPIECEkConfigDefault
+    - KPIECEkConfigDefault
+    - RRTkConfigDefault
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+    - TRRTkConfigDefault
+    - PRMkConfigDefault
+    - PRMstarkConfigDefault
+  projection_evaluator: joints(CHEST_JOINT0,CHEST_JOINT1)
+  longest_valid_segment_fraction: 0.05
+torso:
+  planner_configs:
+    - SBLkConfigDefault
+    - ESTkConfigDefault
+    - LBKPIECEkConfigDefault
+    - BKPIECEkConfigDefault
+    - KPIECEkConfigDefault
+    - RRTkConfigDefault
+    - RRTConnectkConfigDefault
+    - RRTstarkConfigDefault
+    - TRRTkConfigDefault
+    - PRMkConfigDefault
+    - PRMstarkConfigDefault
+  projection_evaluator: joints(CHEST_JOINT0,CHEST_JOINT1)
+  longest_valid_segment_fraction: 0.05
