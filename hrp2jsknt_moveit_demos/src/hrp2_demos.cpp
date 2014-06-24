@@ -605,25 +605,40 @@ public:
     robot_state_->setToDefaultValues();
     goal_state_->setToDefaultValues();
 
-    // Get an arm to plan with
-    const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup("left_arm");
-    robot_state_->setToRandomPositions(left_arm);
+    static const std::string UPPER_BODY_GROUP = "upper_body";
 
+    // Choose random end effector goal positions for left and right arm
+    const robot_model::JointModelGroup* upper_body = robot_model_->getJointModelGroup(UPPER_BODY_GROUP);
+    robot_state_->setToRandomPositions(upper_body);
+
+    // Visualize
     visual_tools_->publishRobotState(robot_state_);
 
     // Get the end effector pose
     Eigen::Affine3d left_eef_pose  = robot_state_->getGlobalLinkTransform("LARM_LINK6");
+    Eigen::Affine3d right_eef_pose  = robot_state_->getGlobalLinkTransform("RARM_LINK6");
 
     // Use an IK solver to find the same solution
     unsigned int attempts = 1;
     double timeout = 5;
-    goal_state_->setFromIK(left_arm, left_eef_pose, attempts, timeout);
-    //goal_state_->setFromIK(whole_body_group_, left_eef_pose, attempts, timeout);
+    //goal_state_->setFromIK(left_arm, left_eef_pose, attempts, timeout);
+
+    std::vector<Eigen::Affine3d> poses;
+    poses.push_back(left_eef_pose);
+    poses.push_back(right_eef_pose);
+    std::vector<std::string> tips;
+    tips.push_back("LARM_LINK6");
+    tips.push_back("RARM_LINK6");
+    goal_state_->setFromIK(UPPER_BODY_GROUP, poses, tips, timeout);
 
     // Error check that the values are the same
     Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
+    Eigen::Affine3d right_eef_pose_new  = goal_state_->getGlobalLinkTransform("RARM_LINK6");
 
-    if (!poseIsSimilar(left_eef_pose, left_eef_pose_new))
+    if (
+      !poseIsSimilar(left_eef_pose, left_eef_pose_new) ||
+      !poseIsSimilar(right_eef_pose, right_eef_pose_new)
+    )
     {
       ROS_ERROR_STREAM_NAMED("temp","Poses are not similar.");
     }
