@@ -71,7 +71,7 @@ public:
   HRP2Demos(int mode)
     : nh_("~")
     , walking_service_name_("/generate_walking_service")
-    , sleep_time_(0.8) // time to wait on ROS messages to clear
+    , sleep_time_(0.5) // time to wait on ROS messages to clear
     , walking_client_loaded_(false)
     , robot_model_loader_(ROBOT_DESCRIPTION) // load the URDF
   {
@@ -80,9 +80,6 @@ public:
 
     // Create the planning scene
     planning_scene_.reset(new planning_scene::PlanningScene(robot_model_));
-
-    // Setup planning pipeline
-    planning_pipeline_.reset(new planning_pipeline::PlanningPipeline(robot_model_, nh_, "planning_plugin", "request_adapters"));
 
     // Get the configuration for the joints in the group
     whole_body_group_ = robot_model_->getJointModelGroup(PLANNING_GROUP);
@@ -94,7 +91,6 @@ public:
 
     // Load the Robot Viz Tools for publishing to Rviz
     visual_tools_.reset(new moveit_visual_tools::VisualTools("/odom","/hrp2_visual_markers", robot_model_));
-    visual_tools_->setLifetime(10.0);
     visual_tools_->loadRobotStatePub("/hrp2_demos");
 
     // Used for clearing out robot state
@@ -102,6 +98,15 @@ public:
 
     // Allow time to startup
     sleep_time_.sleep();
+  }
+
+  void loadPlanningPipeline()
+  {
+      if (!planning_pipeline_)
+      {
+        // Setup planning pipeline
+        planning_pipeline_.reset(new planning_pipeline::PlanningPipeline(robot_model_, nh_, "planning_plugin", "request_adapters"));
+      }
   }
 
   // Use two IK solvers to find leg positions
@@ -280,6 +285,7 @@ public:
       req.allowed_planning_time = 30;
 
       // Call pipeline
+      loadPlanningPipeline(); // always call first
       planning_pipeline_->generatePlan(planning_scene_, req, res);
 
       // Check that the planning was successful
@@ -361,6 +367,7 @@ public:
     req.allowed_planning_time = 30;
 
     // Call pipeline
+    loadPlanningPipeline(); // always call first
     planning_pipeline_->generatePlan(planning_scene_, req, res);
 
     // Check that the planning was successful
@@ -609,7 +616,27 @@ public:
 
     // Choose random end effector goal positions for left and right arm
     const robot_model::JointModelGroup* upper_body = robot_model_->getJointModelGroup(UPPER_BODY_GROUP);
-    robot_state_->setToRandomPositions(upper_body);
+    const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup("left_arm");
+    const robot_model::JointModelGroup* right_arm = robot_model_->getJointModelGroup("right_arm");
+
+    //robot_state_->setToRandomPositions(left_arm);
+    double left_group_state[left_arm->getVariableCount()];
+    for (std::size_t i = 0; i < left_arm->getVariableCount(); ++i)
+      left_group_state[i] = 0.5;
+
+    robot_state_->setJointGroupPositions(right_arm, left_group_state);
+    
+    // Get the left arm joint values
+    /*
+    double right_group_state[right_arm->getVariableCount()];
+    robot_state_->copyJointGroupPositions(left_arm, right_group_state);
+
+    // Hand-alter the 2nd join
+    //right_group_state[1] *= -1;
+
+    // Set the right arm joint values
+    //robot_state_->setJointGroupPositions(right_arm, right_group_state);
+    */
 
     // Visualize
     visual_tools_->publishRobotState(robot_state_);
@@ -621,15 +648,52 @@ public:
     // Use an IK solver to find the same solution
     unsigned int attempts = 1;
     double timeout = 5;
-    //goal_state_->setFromIK(left_arm, left_eef_pose, attempts, timeout);
 
-    std::vector<Eigen::Affine3d> poses;
+    //std::vector<Eigen::Affine3d> poses;
+    EigenSTL::vector_Affine3d poses;
     poses.push_back(left_eef_pose);
     poses.push_back(right_eef_pose);
+
     std::vector<std::string> tips;
     tips.push_back("LARM_LINK6");
     tips.push_back("RARM_LINK6");
-    goal_state_->setFromIK(UPPER_BODY_GROUP, poses, tips, timeout);
+
+    // IK Solver
+    ROS_DEBUG_STREAM_NAMED("temp","Sending setFromIK command:");
+
+    // TESTING AREA
+    {
+      // the next line is cheating:      
+      goal_state_ = robot_state_;
+
+      std::cout << "eigen " << left_eef_pose.translation().x() << std::endl;
+      std::cout << "eigen " << left_eef_pose.translation().y() << std::endl;
+      std::cout << "eigen " << left_eef_pose.translation().z() << std::endl;
+      std::cout << "eigen " << left_eef_pose.rotation() << std::endl;
+
+      geometry_msgs::Pose p1 = moveit_visual_tools::VisualTools::convertPose(left_eef_pose);
+      geometry_msgs::Pose p2 = moveit_visual_tools::VisualTools::convertPose(right_eef_pose);
+      std::cout << "[" << std::endl;
+      std::cout << p1.position.x << ", ";
+      std::cout << p1.position.y << ", ";
+      std::cout << p1.position.z << ", ";
+      std::cout << p1.orientation.x << ", ";
+      std::cout << p1.orientation.y << ", ";
+      std::cout << p1.orientation.z << ", ";
+      std::cout << p1.orientation.w << ", ";
+      std::cout << p2.position.x << ", ";
+      std::cout << p2.position.y << ", ";
+      std::cout << p2.position.z << ", ";
+      std::cout << p2.orientation.x << ", ";
+      std::cout << p2.orientation.y << ", ";
+      std::cout << p2.orientation.z << ", ";
+      std::cout << p2.orientation.w;
+      std::cout << "] " << std::endl;
+    }
+
+    goal_state_->setFromIK(upper_body, poses, tips, timeout);
+
+    ROS_DEBUG_STREAM_NAMED("temp","Done sending command");
 
     // Error check that the values are the same
     Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
@@ -926,6 +990,7 @@ public:
     req.allowed_planning_time = 30;
 
     // Call pipeline
+    loadPlanningPipeline(); // always call first
     planning_pipeline_->generatePlan(planning_scene_, req, res);
 
     // Check that the planning was successful
@@ -1002,7 +1067,7 @@ int main(int argc, char **argv)
   //srand (time(NULL));
 
   ros::init (argc, argv, "hrp2_demos");
-  ROS_INFO_STREAM_NAMED("main","Starting walking client");
+  ROS_INFO_STREAM_NAMED("main","Starting HRP2 Demos");
 
   // Needed for ROS_INFO commands to work
   ros::AsyncSpinner spinner(1);
@@ -1061,6 +1126,10 @@ int main(int argc, char **argv)
           ROS_WARN_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using KDL-variant IK solver");
           client.genSimpleArmIKRequests();
           break;
+        case 9:
+          exit(0);
+          break;
+        case 0:
         default:
           ROS_WARN_STREAM_NAMED("demos","0 - Loop through all these modes continously");
           loop = true;
@@ -1081,20 +1150,31 @@ int main(int argc, char **argv)
     // Prompt user
     std::cout << "Last mode was " << mode << ". Next demo mode (0-8, 9 to quit):";
 
-    // Account for just an enter key being pressed:
-    char c = std::cin.get();
-    if (c == '\n')
+    bool valid_mode = false;
+    while (!valid_mode)
     {
-      std::cout << "ENTER KEY PRESSED " << std::endl;
-    }
-    else
-    {
-      mode = c - '0';
-      std::cout << "key: " << c << " mode: " << mode << std::endl;
-      // eat enter key character
-      c = std::cin.get();
+      // Account for just an enter key being pressed:
+      char c = std::cin.get();
+      if (c == '\n')
+      {
+        std::cout << "ENTER KEY PRESSED " << std::endl;
+      }
+      else
+      {
+        mode = c - '0';
+        std::cout << "key: " << c << " mode: " << mode << std::endl;
+        // eat enter key character
+        c = std::cin.get();
+      }
+      
+      // make sure mode is valid
+      if (mode >= 0 && mode <= 9)
+        break;
+      else
+        std::cout << "Invalid mode: " << mode << std::endl;
     }
 
+    // Exit program
     if (mode == 9)
       break;
   }
