@@ -102,11 +102,11 @@ public:
 
   void loadPlanningPipeline()
   {
-      if (!planning_pipeline_)
-      {
-        // Setup planning pipeline
-        planning_pipeline_.reset(new planning_pipeline::PlanningPipeline(robot_model_, nh_, "planning_plugin", "request_adapters"));
-      }
+    if (!planning_pipeline_)
+    {
+      // Setup planning pipeline
+      planning_pipeline_.reset(new planning_pipeline::PlanningPipeline(robot_model_, nh_, "planning_plugin", "request_adapters"));
+    }
   }
 
   // Use two IK solvers to find leg positions
@@ -607,109 +607,114 @@ public:
     }
   }
 
+  // Set every joint in the group to the same joint value
+  void setGroupToValue(robot_state::RobotStatePtr robot_state, const robot_model::JointModelGroup* jmg, double value)
+  {
+    double group_joints[jmg->getVariableCount()]; // TODO get joint, not variable
+    for (std::size_t i = 0; i < jmg->getVariableCount(); ++i)
+      group_joints[i] = value;
+    robot_state->setJointGroupPositions(jmg, group_joints);
+    robot_state->enforceBounds();
+  }
+
   void genSimpleArmIKRequests()
   {
-    robot_state_->setToDefaultValues();
-    goal_state_->setToDefaultValues();
+    // Benchmark time
+    ros::Time start_time;
+    start_time = ros::Time::now();
+    int tests = 1;
 
-    static const std::string UPPER_BODY_GROUP = "upper_body";
-
-    // Choose random end effector goal positions for left and right arm
-    const robot_model::JointModelGroup* upper_body = robot_model_->getJointModelGroup(UPPER_BODY_GROUP);
-    const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup("left_arm");
-    const robot_model::JointModelGroup* right_arm = robot_model_->getJointModelGroup("right_arm");
-
-    //robot_state_->setToRandomPositions(left_arm);
-    double left_group_state[left_arm->getVariableCount()];
-    for (std::size_t i = 0; i < left_arm->getVariableCount(); ++i)
-      left_group_state[i] = 0.5;
-
-    robot_state_->setJointGroupPositions(right_arm, left_group_state);
-    
-    // Get the left arm joint values
-    /*
-    double right_group_state[right_arm->getVariableCount()];
-    robot_state_->copyJointGroupPositions(left_arm, right_group_state);
-
-    // Hand-alter the 2nd join
-    //right_group_state[1] *= -1;
-
-    // Set the right arm joint values
-    //robot_state_->setJointGroupPositions(right_arm, right_group_state);
-    */
-
-    // Visualize
-    visual_tools_->publishRobotState(robot_state_);
-
-    // Get the end effector pose
-    Eigen::Affine3d left_eef_pose  = robot_state_->getGlobalLinkTransform("LARM_LINK6");
-    Eigen::Affine3d right_eef_pose  = robot_state_->getGlobalLinkTransform("RARM_LINK6");
-
-    // Use an IK solver to find the same solution
-    unsigned int attempts = 1;
-    double timeout = 5;
-
-    //std::vector<Eigen::Affine3d> poses;
-    EigenSTL::vector_Affine3d poses;
-    poses.push_back(left_eef_pose);
-    poses.push_back(right_eef_pose);
-
-    std::vector<std::string> tips;
-    tips.push_back("LARM_LINK6");
-    tips.push_back("RARM_LINK6");
-
-    // IK Solver
-    ROS_DEBUG_STREAM_NAMED("temp","Sending setFromIK command:");
-
-    // TESTING AREA
+    for (std::size_t i = 0; i < tests; ++i)
     {
-      // the next line is cheating:      
-      goal_state_ = robot_state_;
+      ROS_INFO_STREAM_NAMED("temp","Testing number " << i << " of " << tests << " ======================================");
 
-      std::cout << "eigen " << left_eef_pose.translation().x() << std::endl;
-      std::cout << "eigen " << left_eef_pose.translation().y() << std::endl;
-      std::cout << "eigen " << left_eef_pose.translation().z() << std::endl;
-      std::cout << "eigen " << left_eef_pose.rotation() << std::endl;
+      robot_state_->setToDefaultValues();
+      goal_state_->setToDefaultValues();
 
-      geometry_msgs::Pose p1 = moveit_visual_tools::VisualTools::convertPose(left_eef_pose);
-      geometry_msgs::Pose p2 = moveit_visual_tools::VisualTools::convertPose(right_eef_pose);
-      std::cout << "[" << std::endl;
-      std::cout << p1.position.x << ", ";
-      std::cout << p1.position.y << ", ";
-      std::cout << p1.position.z << ", ";
-      std::cout << p1.orientation.x << ", ";
-      std::cout << p1.orientation.y << ", ";
-      std::cout << p1.orientation.z << ", ";
-      std::cout << p1.orientation.w << ", ";
-      std::cout << p2.position.x << ", ";
-      std::cout << p2.position.y << ", ";
-      std::cout << p2.position.z << ", ";
-      std::cout << p2.orientation.x << ", ";
-      std::cout << p2.orientation.y << ", ";
-      std::cout << p2.orientation.z << ", ";
-      std::cout << p2.orientation.w;
-      std::cout << "] " << std::endl;
+      static const std::string UPPER_BODY_GROUP = "upper_body";
+
+      // Choose random end effector goal positions for left and right arm
+      const robot_model::JointModelGroup* upper_body = robot_model_->getJointModelGroup(UPPER_BODY_GROUP);
+      //const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup("left_arm");
+      //const robot_model::JointModelGroup* right_arm = robot_model_->getJointModelGroup("right_arm");
+
+      if (tests == 1)
+      {
+        robot_state_->setToRandomPositions(upper_body);
+      }
+      else
+      {
+        // Set the goal end effector pose to joints of all 0.5
+        setGroupToValue(robot_state_, upper_body, -1.0 + double(i)/tests*2);
+      }
+
+      // Set the seed value to all 0.6
+      setGroupToValue(goal_state_, upper_body, -0.3);
+
+      // Check that the new state is valid
+      robot_state_->enforceBounds();
+      if (!robot_state_->satisfiesBounds(upper_body))
+      {
+        ROS_ERROR_STREAM_NAMED("setGroupToValue","New joint values do not satisfy bounds for group " << upper_body->getName());
+        exit(-1);
+      }
+
+      // Debug seed joint values:
+      {
+        std::vector<double> joints(upper_body->getVariableCount());
+        goal_state_->copyJointGroupPositions(upper_body, joints);
+        std::cout << "Seed input joints: " << std::endl;
+        std::copy(joints.begin(), joints.end(), std::ostream_iterator<double>(std::cout, "\n"));
+      }
+
+      // Visualize
+      visual_tools_->publishRobotState(robot_state_);
+
+      // Get the end effector pose
+      Eigen::Affine3d left_eef_pose  = robot_state_->getGlobalLinkTransform("LARM_LINK6");
+      Eigen::Affine3d right_eef_pose  = robot_state_->getGlobalLinkTransform("RARM_LINK6");
+
+      // Use an IK solver to find the same solution
+      unsigned int attempts = 1;
+      double timeout = 5;
+
+      //std::vector<Eigen::Affine3d> poses;
+      EigenSTL::vector_Affine3d poses;
+      poses.push_back(left_eef_pose);
+      poses.push_back(right_eef_pose);
+
+      std::vector<std::string> tips;
+      tips.push_back("LARM_LINK6");
+      tips.push_back("RARM_LINK6");
+
+      // IK Solver
+      ROS_DEBUG_STREAM_NAMED("temp","Sending setFromIK command:");
+
+      goal_state_->setFromIK(upper_body, poses, tips, timeout);
+
+      ROS_DEBUG_STREAM_NAMED("temp","Done sending command");
+
+      // Error check that the values are the same
+      Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
+      Eigen::Affine3d right_eef_pose_new  = goal_state_->getGlobalLinkTransform("RARM_LINK6");
+
+      if (
+        !poseIsSimilar(left_eef_pose, left_eef_pose_new) ||
+        !poseIsSimilar(right_eef_pose, right_eef_pose_new)
+      )
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Poses are not similar.");
+      }
+
+      // Show the new robot state
+      //ros::Duration(0.25).sleep();
+      visual_tools_->publishRobotState(goal_state_);
     }
 
-    goal_state_->setFromIK(upper_body, poses, tips, timeout);
+    // Benchmark time
+    double duration = (ros::Time::now() - start_time).toNSec() * 1e-6;
+    ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds");
 
-    ROS_DEBUG_STREAM_NAMED("temp","Done sending command");
-
-    // Error check that the values are the same
-    Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
-    Eigen::Affine3d right_eef_pose_new  = goal_state_->getGlobalLinkTransform("RARM_LINK6");
-
-    if (
-      !poseIsSimilar(left_eef_pose, left_eef_pose_new) ||
-      !poseIsSimilar(right_eef_pose, right_eef_pose_new)
-    )
-    {
-      ROS_ERROR_STREAM_NAMED("temp","Poses are not similar.");
-    }
-
-    // Show the new robot state
-    ros::Duration(0.25).sleep();
-    visual_tools_->publishRobotState(goal_state_);
   }
 
   bool poseIsSimilar(const Eigen::Affine3d &pose1, const Eigen::Affine3d &pose2)
@@ -1166,7 +1171,7 @@ int main(int argc, char **argv)
         // eat enter key character
         c = std::cin.get();
       }
-      
+
       // make sure mode is valid
       if (mode >= 0 && mode <= 9)
         break;
