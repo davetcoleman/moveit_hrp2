@@ -617,16 +617,18 @@ public:
     robot_state->enforceBounds();
   }
 
-  void genSimpleArmIKRequests()
+  void genSimpleArmIKRequests(int runs)
   {
     // Benchmark time
     ros::Time start_time;
     start_time = ros::Time::now();
-    int tests = 1;
 
-    for (std::size_t i = 0; i < tests; ++i)
+    // Create random number generator that is stochastic
+    random_numbers::RandomNumberGenerator rng(1); // seed value is always 1    
+
+    for (std::size_t i = 0; i < runs; ++i)
     {
-      ROS_INFO_STREAM_NAMED("temp","Testing number " << i << " of " << tests << " ======================================");
+      ROS_INFO_STREAM_NAMED("temp","Testing number " << i << " of " << runs << " ======================================");
 
       robot_state_->setToDefaultValues();
       goal_state_->setToDefaultValues();
@@ -638,14 +640,17 @@ public:
       //const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup("left_arm");
       //const robot_model::JointModelGroup* right_arm = robot_model_->getJointModelGroup("right_arm");
 
-      if (tests == 1)
+      if (runs == 1)
       {
         robot_state_->setToRandomPositions(upper_body);
       }
       else
       {
+        // Stochastically random goal positions
+        robot_state_->setToRandomPositions(upper_body, rng);
+
         // Set the goal end effector pose to joints of all 0.5
-        setGroupToValue(robot_state_, upper_body, -1.0 + double(i)/tests*2);
+        //setGroupToValue(robot_state_, upper_body, -1.0 + double(i)/runs*2);
       }
 
       // Set the seed value to all 0.6
@@ -663,8 +668,11 @@ public:
       {
         std::vector<double> joints(upper_body->getVariableCount());
         goal_state_->copyJointGroupPositions(upper_body, joints);
-        std::cout << "Seed input joints: " << std::endl;
-        std::copy(joints.begin(), joints.end(), std::ostream_iterator<double>(std::cout, "\n"));
+        if (false)
+        {
+          std::cout << "Seed input joints: " << std::endl;
+          std::copy(joints.begin(), joints.end(), std::ostream_iterator<double>(std::cout, "\n"));
+        }
       }
 
       // Visualize
@@ -688,11 +696,7 @@ public:
       tips.push_back("RARM_LINK6");
 
       // IK Solver
-      ROS_DEBUG_STREAM_NAMED("temp","Sending setFromIK command:");
-
       goal_state_->setFromIK(upper_body, poses, tips, timeout);
-
-      ROS_DEBUG_STREAM_NAMED("temp","Done sending command");
 
       // Error check that the values are the same
       Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
@@ -712,7 +716,7 @@ public:
     }
 
     // Benchmark time
-    double duration = (ros::Time::now() - start_time).toNSec() * 1e-6;
+    double duration = (ros::Time::now() - start_time).toSec();
     ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds");
 
   }
@@ -1080,6 +1084,7 @@ int main(int argc, char **argv)
 
   // Parse command line arguments
   int mode = 1;
+  int runs = 1;
   for (std::size_t i = 0; i < argc; ++i)
   {
     if( std::string(argv[i]).compare("--mode") == 0 )
@@ -1087,6 +1092,13 @@ int main(int argc, char **argv)
       ++i;
       mode = atoi(argv[i]);
       ROS_INFO_STREAM_NAMED("main","In mode " << mode);
+    }
+
+    if( std::string(argv[i]).compare("--runs") == 0 )
+    {
+      ++i;
+      runs = atoi(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","Performing " << runs << " runs");
     }
   }
 
@@ -1129,7 +1141,7 @@ int main(int argc, char **argv)
           break;
         case 8:
           ROS_WARN_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using KDL-variant IK solver");
-          client.genSimpleArmIKRequests();
+          client.genSimpleArmIKRequests(runs);
           break;
         case 9:
           exit(0);
