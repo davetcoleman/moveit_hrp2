@@ -59,6 +59,9 @@ n * Software License Agreement (BSD License)
 // Helper for Rviz
 #include <moveit_visual_tools/visual_tools.h>
 
+// Random numbers
+#include <random_numbers/random_numbers.h>
+
 namespace hrp2jsknt_moveit_demos
 {
 
@@ -611,8 +614,17 @@ public:
       rng = new random_numbers::RandomNumberGenerator(seed); // seed value is always 1
     }
 
-    for (std::size_t i = 0; i < runs; ++i)
+    // Skip x number random numbers (for debugging)
+    int skip_rands = 0; // set this to the id of the run you want to test
+    runs += skip_rands; // offset runs by where we start from
+    for (std::size_t i = 0; i < skip_rands; ++i)
     {
+      rng->uniform01();
+    }
+
+    for (std::size_t i = skip_rands; i < runs; ++i)
+    {
+      std::cout << std::endl;
       ROS_INFO_STREAM_NAMED("temp","Testing number " << i << " of " << runs << " ======================================");
 
       robot_state_->setToDefaultValues();
@@ -682,7 +694,10 @@ public:
         !poseIsSimilar(right_eef_pose, right_eef_pose_new)
       )
       {
-        ROS_ERROR_STREAM_NAMED("temp","Poses are not similar.");
+        std::cout << "=========================================================== " << std::endl;
+        ROS_ERROR_STREAM_NAMED("temp","POSES ARE NOT SIMILAR, BENCHMARK FAILED on test " << i);
+        std::cout << "=========================================================== " << std::endl;
+        break;
       }
       else
       {
@@ -695,7 +710,7 @@ public:
     // Benchmark time
     double duration = (ros::Time::now() - start_time).toSec();
     ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds");
-
+    exit(0);
   }
 
   bool poseIsSimilar(const Eigen::Affine3d &pose1, const Eigen::Affine3d &pose2)

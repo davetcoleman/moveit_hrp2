@@ -1,33 +1,27 @@
-<?xml version="1.0"?>
+<?xml version='1.0' encoding='ASCII'?>
 <package>
   <name>hrp2jsknt_moveit_demos</name>
   <version>0.5.3</version>
   <description>The hrp2jsknt_moveit_demos package</description>
-
   <maintainer email="davetcoleman@gmail.com">Dave Coleman</maintainer>
-
   <license>BSD</license>
-
-  <url type="website">https://github.com/davetcoleman/PACKAGE_NAME</url>
-  <url type="butracker">https://github.com/davetcoleman/PACKAGE_NAME/issues</url>
-  <url type="repository">https://github.com/davetcoleman/PACKAGE_NAME/</url>
-
+  <url type="website">https://github.com/davetcoleman/moveit_hrp2</url>
+  <url type="butracker">https://github.com/davetcoleman/moveit_hrp2/issues</url>
+  <url type="repository">https://github.com/davetcoleman/moveit_hrp2/</url>
   <author email="davetcoleman@gmail.com">Dave Coleman</author>
-
   <buildtool_depend>catkin</buildtool_depend>
-
   <build_depend>moveit_core</build_depend>
   <build_depend>moveit_ros_planning_interface</build_depend>
   <build_depend>interactive_markers</build_depend>
   <build_depend>moveit_msgs</build_depend>
   <build_depend>moveit_visual_tools</build_depend>
   <build_depend>hrp2_moveit_msgs</build_depend>
-
   <run_depend>moveit_core</run_depend>
   <run_depend>moveit_ros_planning_interface</run_depend>
   <run_depend>interactive_markers</run_depend>
   <run_depend>moveit_msgs</run_depend>
   <run_depend>moveit_visual_tools</run_depend>
   <run_depend>hrp2_moveit_msgs</run_depend>
-
+  <build_depend>random_numbers</build_depend>
+  <run_depend>random_numbers</run_depend>
 </package>

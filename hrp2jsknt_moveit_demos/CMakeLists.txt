@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(hrp2jsknt_moveit_demos)
 
-find_package(catkin REQUIRED COMPONENTS 
+find_package(catkin REQUIRED COMPONENTS
+  random_numbers
   moveit_core 
   moveit_ros_planning 
   moveit_ros_planning_interface 
@@ -15,7 +16,8 @@ find_package(Boost REQUIRED system filesystem date_time thread)
 
 catkin_package(
 #  INCLUDE_DIRS include
-  CATKIN_DEPENDS 
+  CATKIN_DEPENDS
+    random_numbers
     moveit_core
     moveit_ros_planning_interface
     moveit_msgs
