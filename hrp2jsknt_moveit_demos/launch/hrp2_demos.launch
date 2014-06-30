@@ -10,6 +10,8 @@
   <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
 
   <arg name="mode" default="1" />
+  <arg name="seed" default="0" /> <!-- 0 means use system time -->
+  <arg name="runs" default="1" />
 
   <!-- Planning Functionality -->
   <include ns="hrp2jsknt_moveit_demos" file="$(find hrp2jsknt_moveit_config)/launch/planning_pipeline.launch.xml">
@@ -17,7 +19,7 @@
   </include>
 
   <node name="hrp2jsknt_moveit_demos" pkg="hrp2jsknt_moveit_demos" type="hrp2_demos" respawn="false" 
-	launch-prefix="$(arg launch_prefix)" output="screen" args="--mode $(arg mode)">
+	launch-prefix="$(arg launch_prefix)" output="screen" args="--mode $(arg mode) --seed $(arg seed) --runs $(arg runs)">
 
     <!-- DTC Testing -->
     <param name="constraint_samplers" value=""/>

@@ -211,8 +211,8 @@ public:
 
   void genRandMoveItPlan()
   {
-    setStateToGroupPose(goal_state_,  "reset_whole_body");
-    setStateToGroupPose(robot_state_, "reset_whole_body");
+    setStateToGroupPose(goal_state_,  "reset_whole_body", whole_body_group_);
+    setStateToGroupPose(robot_state_, "reset_whole_body", whole_body_group_);
 
     // Generate random goal positions
     ros::Rate loop_rate(1);
@@ -306,31 +306,6 @@ public:
     }
   }
 
-  /* RETIRED
-     void genRandWalkingJumps()
-     {
-     // Set to crouching position
-     setStateToGroupPose(goal_state_,  "reset_whole_body");
-     setStateToGroupPose(robot_state_, "reset_whole_body");
-
-     // Generate random goal positions
-     ros::Rate loop_rate(1);
-
-     for (int counter=0; counter<10 && ros::ok(); counter++)
-     {
-     ROS_WARN_STREAM_NAMED("temp","RUN " << counter << " ------------------------------");
-     setStateXYTheta(goal_state_);
-     visual_tools_->publishRobotState(robot_state_);
-     }
-     // let ROS send the message, then wait a while
-     ros::spinOnce();
-     loop_rate.sleep();
-
-     // Copy the last goal state to our new current state
-     *robot_state_ = *goal_state_;
-     }
-  */
-
   // Plan with MoveIt + Lightning for different arm positions
   void genLightningPlans() // zebra
   {
@@ -391,8 +366,8 @@ public:
   void genRandWalking()
   {
     // Set to crouching position
-    setStateToGroupPose(goal_state_,  "reset_whole_body");
-    setStateToGroupPose(robot_state_, "reset_whole_body");
+    setStateToGroupPose(goal_state_,  "reset_whole_body", whole_body_group_);
+    setStateToGroupPose(robot_state_, "reset_whole_body", whole_body_group_);
 
     // Generate random goal positions
     ros::Rate loop_rate(1);
@@ -617,14 +592,24 @@ public:
     robot_state->enforceBounds();
   }
 
-  void genSimpleArmIKRequests(int runs)
+  void genSimpleArmIKRequests(int runs, std::size_t seed)
   {
     // Benchmark time
     ros::Time start_time;
     start_time = ros::Time::now();
 
+    random_numbers::RandomNumberGenerator *rng;
+
     // Create random number generator that is stochastic
-    random_numbers::RandomNumberGenerator rng(1); // seed value is always 1    
+    if (seed == 0) // use random seed
+    {
+      rng = new random_numbers::RandomNumberGenerator();
+      ROS_INFO_STREAM_NAMED("genSimpleArmIKRequets","Used random seed: " << rng->getFirstSeed() );
+    }
+    else
+    {
+      rng = new random_numbers::RandomNumberGenerator(seed); // seed value is always 1
+    }
 
     for (std::size_t i = 0; i < runs; ++i)
     {
@@ -640,21 +625,11 @@ public:
       //const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup("left_arm");
       //const robot_model::JointModelGroup* right_arm = robot_model_->getJointModelGroup("right_arm");
 
-      if (runs == 1)
-      {
-        robot_state_->setToRandomPositions(upper_body);
-      }
-      else
-      {
-        // Stochastically random goal positions
-        robot_state_->setToRandomPositions(upper_body, rng);
-
-        // Set the goal end effector pose to joints of all 0.5
-        //setGroupToValue(robot_state_, upper_body, -1.0 + double(i)/runs*2);
-      }
+      // Stochastically random goal positions
+      robot_state_->setToRandomPositions(upper_body, *rng);
 
       // Set the seed value to all 0.6
-      setGroupToValue(goal_state_, upper_body, -0.3);
+      setStateToGroupPose(goal_state_, "upper_body_ik_default", upper_body);
 
       // Check that the new state is valid
       robot_state_->enforceBounds();
@@ -709,10 +684,12 @@ public:
       {
         ROS_ERROR_STREAM_NAMED("temp","Poses are not similar.");
       }
-
-      // Show the new robot state
-      //ros::Duration(0.25).sleep();
-      visual_tools_->publishRobotState(goal_state_);
+      else
+      {
+        // Show the new robot state
+        //ros::Duration(0.25).sleep();
+        visual_tools_->publishRobotState(goal_state_);
+      }
     }
 
     // Benchmark time
@@ -796,11 +773,11 @@ public:
     */
   }
 
-  void setStateToGroupPose(robot_state::RobotStatePtr &state, const std::string& pose_name)
+  void setStateToGroupPose(robot_state::RobotStatePtr &state, const std::string& pose_name, const robot_model::JointModelGroup* jmg)
   {
-    if (!state->setToDefaultValues(whole_body_group_, pose_name))
+    if (!state->setToDefaultValues(jmg, pose_name))
     {
-      ROS_ERROR_STREAM_NAMED("demo","Failed to set pose '" << pose_name << "' for planning group '" << whole_body_group_->getName() << "'");
+      ROS_ERROR_STREAM_NAMED("demo","Failed to set pose '" << pose_name << "' for planning group '" << jmg->getName() << "'");
     }
   }
 
@@ -1085,6 +1062,8 @@ int main(int argc, char **argv)
   // Parse command line arguments
   int mode = 1;
   int runs = 1;
+  std::size_t seed = 0;
+
   for (std::size_t i = 0; i < argc; ++i)
   {
     if( std::string(argv[i]).compare("--mode") == 0 )
@@ -1099,6 +1078,13 @@ int main(int argc, char **argv)
       ++i;
       runs = atoi(argv[i]);
       ROS_INFO_STREAM_NAMED("main","Performing " << runs << " runs");
+    }
+
+    if( std::string(argv[i]).compare("--seed") == 0 )
+    {
+      ++i;
+      seed = atoi(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","Using seed " << seed);
     }
   }
 
@@ -1141,7 +1127,7 @@ int main(int argc, char **argv)
           break;
         case 8:
           ROS_WARN_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using KDL-variant IK solver");
-          client.genSimpleArmIKRequests(runs);
+          client.genSimpleArmIKRequests(runs, seed);
           break;
         case 9:
           exit(0);
