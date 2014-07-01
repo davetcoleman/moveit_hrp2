@@ -13,7 +13,7 @@ Panels:
         - /RobotState1
         - /RobotState2
       Splitter Ratio: 0.507622
-    Tree Height: 1364
+    Tree Height: 975
   - Class: rviz/Help
     Name: Help
   - Class: rviz/Views
@@ -350,7 +350,7 @@ Visualization Manager:
         Joint Violation Color: 255; 0; 255
         Planning Group: upper_body
         Query Goal State: false
-        Query Start State: false
+        Query Start State: true
         Show Workspace: false
         Start State Alpha: 1
         Start State Color: 0; 255; 0
@@ -1254,22 +1254,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 3.62869
+      Distance: 2.81006
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.26334
-        Y: 0.167319
+        X: 0.239714
+        Y: -0.0815549
         Z: -4.17232e-07
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.625399
+      Pitch: 0.140399
       Target Frame: BODY
       Value: XYOrbit (rviz)
-      Yaw: 0.475387
+      Yaw: 5.95858
     Saved: ~
 Window Geometry:
   Displays:
@@ -1281,9 +1281,9 @@ Window Geometry:
   Hide Right Dock: false
   Motion Planning:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000001000000000000019500000595fc0200000005fb000000100044006900730070006c006100790073010000004100000595000000dd00fffffffb0000000800480065006c00700000000342000000bb0000007600fffffffb0000000a0056006900650077007300000003b0000000b0000000b000fffffffb0000000c00430061006d00650072006100000002ff000001610000000000000000fb0000001e004d006f00740069006f006e00200050006c0061006e006e0069006e006700000004570000017f0000017400ffffff000003650000059500000001000000020000000100000002fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002a200000595fc0200000005fb000000100044006900730070006c006100790073010000004100000410000000dd00fffffffb0000000800480065006c00700000000342000000bb0000007600fffffffb0000000a0056006900650077007300000003b0000000b0000000b000fffffffb0000000c00430061006d00650072006100000002ff000001610000000000000000fb0000001e004d006f00740069006f006e00200050006c0061006e006e0069006e006701000004570000017f0000017400ffffff000002f50000059500000001000000020000000100000002fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
-  Width: 1280
-  X: 1237
+  Width: 1437
+  X: 1073
   Y: 24
