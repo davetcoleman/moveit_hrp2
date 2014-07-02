@@ -35,15 +35,7 @@
         <joint name="RARM_JOINT6" />
     </group>
     <group name="right_arm_torso">
-        <joint name="RARM_JOINT0" />
-        <joint name="RARM_JOINT1" />
-        <joint name="RARM_JOINT2" />
-        <joint name="RARM_JOINT3" />
-        <joint name="RARM_JOINT4" />
-        <joint name="RARM_JOINT5" />
-        <joint name="RARM_JOINT6" />
-        <joint name="CHEST_JOINT0" />
-        <joint name="CHEST_JOINT1" />
+        <chain base_link="BODY" tip_link="RARM_LINK6" />
     </group>
     <group name="whole_body">
         <joint name="virtual_joint" />
@@ -101,14 +93,12 @@
         <joint name="LLEG_JOINT3" />
         <joint name="LLEG_JOINT4" />
         <joint name="LLEG_JOINT5" />
-        <joint name="LLEG_JOINT6" />
         <joint name="RLEG_JOINT0" />
         <joint name="RLEG_JOINT1" />
         <joint name="RLEG_JOINT2" />
         <joint name="RLEG_JOINT3" />
         <joint name="RLEG_JOINT4" />
         <joint name="RLEG_JOINT5" />
-        <joint name="RLEG_JOINT6" />
     </group>
     <group name="left_hand">
         <link name="L_INDEXMP_R_LINK" />
