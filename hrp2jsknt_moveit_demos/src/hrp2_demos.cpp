@@ -595,7 +595,7 @@ public:
     robot_state->enforceBounds();
   }
 
-  void genSimpleArmIKRequests(int runs, std::size_t seed)
+  void genWholeBodyIKRequests(int runs, std::size_t seed)
   {
     // Benchmark time
     ros::Time start_time;
@@ -625,23 +625,23 @@ public:
     for (std::size_t i = skip_rands; i < runs; ++i)
     {
       std::cout << std::endl;
-      ROS_INFO_STREAM_NAMED("temp","Testing number " << i << " of " << runs << " ======================================");
+      ROS_INFO_STREAM_NAMED("temp","Testing number " << i+1 << " of " << runs << " ======================================");
 
       robot_state_->setToDefaultValues();
       goal_state_->setToDefaultValues();
 
-      static const std::string UPPER_BODY_GROUP = "upper_body";
+      static const std::string UPPER_BODY_GROUP = "whole_body_fixed";
+      //static const std::string UPPER_BODY_GROUP = "upper_body";
 
       // Choose random end effector goal positions for left and right arm
       const robot_model::JointModelGroup* upper_body = robot_model_->getJointModelGroup(UPPER_BODY_GROUP);
-      //const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup("left_arm");
-      //const robot_model::JointModelGroup* right_arm = robot_model_->getJointModelGroup("right_arm");
 
       // Stochastically random goal positions
       robot_state_->setToRandomPositions(upper_body, *rng);
 
-      // Set the seed value to all 0.6
-      setStateToGroupPose(goal_state_, "upper_body_ik_default", upper_body);
+      // Set the seed value from SRDF
+      setStateToGroupPose(goal_state_, "reset_whole_body", upper_body);
+      //setStateToGroupPose(goal_state_, "upper_body_ik_default", upper_body);      
 
       // Check that the new state is valid
       robot_state_->enforceBounds();
@@ -668,19 +668,24 @@ public:
       // Get the end effector pose
       Eigen::Affine3d left_eef_pose  = robot_state_->getGlobalLinkTransform("LARM_LINK6");
       Eigen::Affine3d right_eef_pose  = robot_state_->getGlobalLinkTransform("RARM_LINK6");
+      Eigen::Affine3d left_foot_pose  = robot_state_->getGlobalLinkTransform("LLEG_LINK5");
+      Eigen::Affine3d right_foot_pose  = robot_state_->getGlobalLinkTransform("RLEG_LINK5");
 
       // Use an IK solver to find the same solution
       unsigned int attempts = 1;
       double timeout = 5;
 
-      //std::vector<Eigen::Affine3d> poses;
       EigenSTL::vector_Affine3d poses;
       poses.push_back(left_eef_pose);
       poses.push_back(right_eef_pose);
+      poses.push_back(left_foot_pose);
+      poses.push_back(right_foot_pose);
 
       std::vector<std::string> tips;
       tips.push_back("LARM_LINK6");
       tips.push_back("RARM_LINK6");
+      tips.push_back("LLEG_LINK5");
+      tips.push_back("RLEG_LINK5");
 
       // IK Solver
       goal_state_->setFromIK(upper_body, poses, tips, timeout);
@@ -688,10 +693,14 @@ public:
       // Error check that the values are the same
       Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
       Eigen::Affine3d right_eef_pose_new  = goal_state_->getGlobalLinkTransform("RARM_LINK6");
+      Eigen::Affine3d left_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
+      Eigen::Affine3d right_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
 
       if (
         !poseIsSimilar(left_eef_pose, left_eef_pose_new) ||
-        !poseIsSimilar(right_eef_pose, right_eef_pose_new)
+        !poseIsSimilar(right_eef_pose, right_eef_pose_new ||
+        !poseIsSimilar(left_foot_pose, left_foot_pose_new) ||
+        !poseIsSimilar(right_foot_pose, right_foot_pose_new)
       )
       {
         std::cout << "=========================================================== " << std::endl;
@@ -1142,7 +1151,7 @@ int main(int argc, char **argv)
           break;
         case 8:
           ROS_WARN_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using KDL-variant IK solver");
-          client.genSimpleArmIKRequests(runs, seed);
+          client.genWholeBodyIKRequests(runs, seed);
           break;
         case 9:
           exit(0);
