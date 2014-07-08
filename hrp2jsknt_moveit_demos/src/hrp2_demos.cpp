@@ -688,7 +688,10 @@ public:
       tips.push_back("RLEG_LINK5");
 
       // IK Solver
-      goal_state_->setFromIK(upper_body, poses, tips, timeout);
+      if (!goal_state_->setFromIK(upper_body, poses, tips, timeout))
+      {
+        ROS_ERROR_STREAM_NAMED("demos","setFromIK failed");
+      }
 
       // Error check that the values are the same
       Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
@@ -696,11 +699,29 @@ public:
       Eigen::Affine3d left_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
       Eigen::Affine3d right_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
 
-      if (
-        !poseIsSimilar(left_eef_pose, left_eef_pose_new) ||
-        !poseIsSimilar(right_eef_pose, right_eef_pose_new) ||
-        !poseIsSimilar(left_foot_pose, left_foot_pose_new) ||
-        !poseIsSimilar(right_foot_pose, right_foot_pose_new))
+      bool passed = true;
+      if (!poseIsSimilar(left_eef_pose, left_eef_pose_new))
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Pose not similar: left_eef");
+        passed = false;
+      }
+      if (!poseIsSimilar(right_eef_pose, right_eef_pose_new))
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Pose not similar: right_eef");
+        passed = false;
+      }
+      if (!poseIsSimilar(left_foot_pose, left_foot_pose_new))
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Pose not similar: left_foot");
+        passed = false;
+      }
+      if (!poseIsSimilar(right_foot_pose, right_foot_pose_new))
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Pose not similar: right_foot");
+        passed = false;
+      }
+
+      if (!passed)
       {
         std::cout << "=========================================================== " << std::endl;
         ROS_ERROR_STREAM_NAMED("temp","POSES ARE NOT SIMILAR, BENCHMARK FAILED on test " << i);
@@ -723,20 +744,40 @@ public:
 
   bool poseIsSimilar(const Eigen::Affine3d &pose1, const Eigen::Affine3d &pose2)
   {
+    Eigen::Quaterniond quat1 = Eigen::Quaterniond(pose1.rotation());
+    Eigen::Quaterniond quat2 = Eigen::Quaterniond(pose2.rotation());
+
     geometry_msgs::Pose p1 = moveit_visual_tools::VisualTools::convertPose(pose1);
     geometry_msgs::Pose p2 = moveit_visual_tools::VisualTools::convertPose(pose2);
 
-    double similarity_threshold = 0.01;
+    //double similarity_threshold = 0.01;
     if (
-      abs(p1.position.x - p2.position.x) > similarity_threshold ||
-      abs(p1.position.y - p2.position.y) > similarity_threshold ||
-      abs(p1.position.z - p2.position.z) > similarity_threshold ||
-      abs(p1.orientation.x - p2.orientation.x) > similarity_threshold ||
-      abs(p1.orientation.y - p2.orientation.y) > similarity_threshold ||
-      abs(p1.orientation.z - p2.orientation.z) > similarity_threshold ||
-      abs(p1.orientation.w - p2.orientation.w) > similarity_threshold
+      abs(p1.position.x - p2.position.x) > std::numeric_limits<double>::epsilon() ||
+      abs(p1.position.y - p2.position.y) > std::numeric_limits<double>::epsilon() ||
+      abs(p1.position.z - p2.position.z) > std::numeric_limits<double>::epsilon() ||
+      quat1.angularDistance(quat2) > 3 //std::numeric_limits<double>::epsilon()
+      //      quat1.dot(quat2) < 1 - 100*std::numeric_limits<double>::epsilon() //using "dot" avoids a trigonometric function.
     )
     {
+      if (abs(p1.position.x - p2.position.x) > std::numeric_limits<double>::epsilon())
+        std::cout << "Diff x: " << std::setprecision(12) << abs(p1.position.x - p2.position.x)  << std::endl;
+      if (abs(p1.position.y - p2.position.y) > std::numeric_limits<double>::epsilon())
+        std::cout << "Diff y: " << std::setprecision(12) << abs(p1.position.y - p2.position.y)  << std::endl;
+      if (abs(p1.position.z - p2.position.z) > std::numeric_limits<double>::epsilon())
+        std::cout << "Diff z: " << std::setprecision(12) << abs(p1.position.z - p2.position.z)  << std::endl;
+
+      if (quat1.dot(quat2) < 1 - std::numeric_limits<double>::epsilon()) //using "dot" avoids a trigonometric function.
+      {
+        std::cout << "Difference in angle is greater than epsilon: " << std::setprecision(12) << quat1.dot(quat2) << std::endl;
+      }
+      if (quat1.angularDistance(quat2) > 3 )
+      {
+        std::cout << "Angular Distance is too large: " << std::setprecision(12) << quat1.angularDistance(quat2) << std::endl;
+      }
+
+      std::cout << "pose1 \n" << p1 <<std::endl;
+      std::cout << "pose2 \n" << p2 <<std::endl;
+
       return false;
     }
     return true;
