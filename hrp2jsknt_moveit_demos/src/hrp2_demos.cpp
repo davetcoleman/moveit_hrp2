@@ -62,6 +62,9 @@
 // Random numbers
 #include <random_numbers/random_numbers.h>
 
+// Boost
+#include <boost/filesystem.hpp>
+
 namespace hrp2jsknt_moveit_demos
 {
 
@@ -595,12 +598,59 @@ public:
     robot_state->enforceBounds();
   }
 
-  void genWholeBodyIKRequests(int runs, std::size_t seed)
+  void genWholeBodyIKRequestsSweep(int runs, std::size_t seed)
+  {
+    // Whether to do parameter sweeping
+    if (false) 
+    {
+      // Save to file
+      std::ofstream istream("/home/dave/ros/ik_data/times.dat");
+
+      // Vary alphas
+      for (double alpha = 0.1; alpha < 1.0; alpha += 0.05)
+      {
+        // Set the alpha on the ROS param server
+
+        //double alpha = 0.6;
+        nh_.setParam("alpha", alpha);
+        ros::Duration(0.1).sleep();
+
+        double duration = genWholeBodyIKRequestsBenchmark(runs, seed);
+
+        // Save
+        istream << alpha << "," << duration << std::endl;
+      }
+
+      istream.close();
+    }
+    else
+    {
+      genWholeBodyIKRequestsBenchmark(runs, seed);
+    }
+  }
+
+  double genWholeBodyIKRequestsBenchmark(int runs, std::size_t seed)
   {
     // Benchmark time
     ros::Time start_time;
     start_time = ros::Time::now();
 
+    // Run test
+    if (!genWholeBodyIKRequests(runs, seed))
+    {
+      ROS_ERROR_STREAM_NAMED("temp","Test failed");
+      return 1000; // a large number
+    }
+
+    // Benchmark time
+    double duration = (ros::Time::now() - start_time).toSec();
+    ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds");
+    
+    return duration;
+  }
+
+  bool genWholeBodyIKRequests(int runs, std::size_t seed)
+  {
     random_numbers::RandomNumberGenerator *rng;
 
     // Create random number generator that is stochastic
@@ -615,7 +665,7 @@ public:
     }
 
     // Skip x number random numbers (for debugging)
-    int skip_rands = 0; // set this to the id of the run you want to test
+    int skip_rands = 5; // set this to the id of the run you want to test
     runs += skip_rands; // offset runs by where we start from
     for (std::size_t i = 0; i < skip_rands; ++i)
     {
@@ -638,6 +688,13 @@ public:
 
       // Stochastically random goal positions
       robot_state_->setToRandomPositions(upper_body, *rng);
+
+      // hack to skip run 2 that is bad
+      if (i == 1 && false)
+      {
+        ROS_WARN_STREAM_NAMED("temp","using skip run 2 hack");
+        continue;
+      }
 
       // Set the seed value from SRDF
       setStateToGroupPose(goal_state_, "reset_whole_body", upper_body);
@@ -673,7 +730,7 @@ public:
 
       // Use an IK solver to find the same solution
       unsigned int attempts = 1;
-      double timeout = 5;
+      double timeout = 50;
 
       EigenSTL::vector_Affine3d poses;
       poses.push_back(left_eef_pose);
@@ -688,9 +745,10 @@ public:
       tips.push_back("RLEG_LINK5");
 
       // IK Solver
-      if (!goal_state_->setFromIK(upper_body, poses, tips, timeout))
+      if (!goal_state_->setFromIK(upper_body, poses, tips, attempts, timeout))
       {
         ROS_ERROR_STREAM_NAMED("demos","setFromIK failed");
+        return false;
       }
 
       // Error check that the values are the same
@@ -726,20 +784,18 @@ public:
         std::cout << "=========================================================== " << std::endl;
         ROS_ERROR_STREAM_NAMED("temp","POSES ARE NOT SIMILAR, BENCHMARK FAILED on test " << i);
         std::cout << "=========================================================== " << std::endl;
-        break;
+        return false;
       }
       else
       {
         // Show the new robot state
         //ros::Duration(0.25).sleep();
-        visual_tools_->publishRobotState(goal_state_);
+        //visual_tools_->publishRobotState(goal_state_);
       }
-    }
 
-    // Benchmark time
-    double duration = (ros::Time::now() - start_time).toSec();
-    ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds");
-    exit(0);
+    } // for runs
+
+    return true;
   }
 
   bool poseIsSimilar(const Eigen::Affine3d &pose1, const Eigen::Affine3d &pose2)
@@ -1191,7 +1247,7 @@ int main(int argc, char **argv)
           break;
         case 8:
           ROS_WARN_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using KDL-variant IK solver");
-          client.genWholeBodyIKRequests(runs, seed);
+          client.genWholeBodyIKRequestsSweep(runs, seed);
           break;
         case 9:
           exit(0);
@@ -1213,6 +1269,8 @@ int main(int argc, char **argv)
     // Check if ROS is shutting down
     if (!ros::ok())
       break;
+
+    exit(0); // temp
 
     // Prompt user
     std::cout << "Last mode was " << mode << ". Next demo mode (0-8, 9 to quit):";
