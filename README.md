@@ -46,7 +46,7 @@ To use this repo:
 
 * Build necessary ROS messages into LISP version
     ```
-    rosrun roseus generate-all-msg-srv.sh moveit_msgs sensor_msgs geometry_msgs trajectory_msgs std_msgs actionlib_msgs visual_msgs std_srvs hrp2_moveit_msgs
+    rosrun roseus generate-all-msg-srv.sh moveit_msgs sensor_msgs geometry_msgs trajectory_msgs std_msgs actionlib_msgs visual_msgs std_srvs hrp2_moveit_msgs jsk_ik_server cmake_modules
     ```
 
 * Only if you have issues - try installing these other Ubuntu dependencies (required by jsk-ros-pkg, not this repo)

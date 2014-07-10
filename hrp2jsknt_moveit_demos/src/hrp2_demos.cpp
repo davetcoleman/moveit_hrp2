@@ -313,7 +313,7 @@ public:
   }
 
   // Plan with MoveIt + Lightning for different arm positions
-  void genLightningPlans() // zebra
+  void genLightningPlans()
   {
     robot_state_->setToDefaultValues();
     goal_state_->setToDefaultValues();
@@ -324,6 +324,7 @@ public:
     const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup(left_arm_group);
     goal_state_->setToRandomPositions(left_arm);
 
+    // Visualize
     visual_tools_->publishRobotState(goal_state_);
 
     moveit_msgs::MotionPlanResponse response;
