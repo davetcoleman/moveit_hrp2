@@ -273,6 +273,15 @@
         <joint name="RARM_JOINT5" value="0.0361" />
         <joint name="RARM_JOINT6" value="-0.4149" />
     </group_state>
+    <group_state name="left_arm_ik_default" group="left_arm">
+        <joint name="LARM_JOINT0" value="-0.7648" />
+        <joint name="LARM_JOINT1" value="0.4535" />
+        <joint name="LARM_JOINT2" value="-0.2165" />
+        <joint name="LARM_JOINT3" value="-0.6465" />
+        <joint name="LARM_JOINT4" value="0.4365" />
+        <joint name="LARM_JOINT5" value="-0.6675" />
+        <joint name="LARM_JOINT6" value="-0.433" />
+    </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="right_eef" parent_link="RARM_LINK6" group="right_hand" parent_group="right_arm" />
     <end_effector name="left_eef" parent_link="LARM_LINK6" group="left_hand" parent_group="left_arm" />
