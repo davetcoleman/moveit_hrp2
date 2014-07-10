@@ -601,14 +601,20 @@ public:
   void genWholeBodyIKRequestsSweep(int runs, std::size_t seed)
   {
     // Whether to do parameter sweeping
-    if (false) 
+    if (false)
     {
       // Save to file
       std::ofstream istream("/home/dave/ros/ik_data/times.dat");
 
+      double test_values[6] = { 0.0, 0.001, 0.01, 0.1, 0.25, 0.5 };
+
       // Vary alphas
-      for (double alpha = 0.1; alpha < 1.0; alpha += 0.05)
+      //for (double alpha = 0.0; alpha < 1.0; alpha += 0.05)
+      for (std::size_t i = 0; i < 6; ++i)
       {
+        double alpha = test_values[i];
+        ROS_WARN_STREAM_NAMED("temp","Testing alpha with value " << alpha);
+
         // Set the alpha on the ROS param server
 
         //double alpha = 0.6;
@@ -645,12 +651,21 @@ public:
     // Benchmark time
     double duration = (ros::Time::now() - start_time).toSec();
     ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds");
-    
+
     return duration;
   }
 
   bool genWholeBodyIKRequests(int runs, std::size_t seed)
   {
+    static const std::string JOINT_MODEL_GROUP = "left_arm";
+    static const std::string RESET_POSE = "reset_whole_body";
+
+    //static const std::string JOINT_MODEL_GROUP = "whole_body_fixed";
+    //static const std::string RESET_POSE = "reset_whole_body";
+
+    //static const std::string JOINT_MODEL_GROUP = "upper_body";
+    //static const std::string RESET_POSE = "reset_whole_body";
+
     random_numbers::RandomNumberGenerator *rng;
 
     // Create random number generator that is stochastic
@@ -664,12 +679,16 @@ public:
       rng = new random_numbers::RandomNumberGenerator(seed); // seed value is always 1
     }
 
+    // Choose random end effector goal positions for left and right arm
+    const robot_model::JointModelGroup* joint_model_group = robot_model_->getJointModelGroup(JOINT_MODEL_GROUP);
+
     // Skip x number random numbers (for debugging)
-    int skip_rands = 5; // set this to the id of the run you want to test
+    int skip_rands = 0; // set this to the id of the run you want to test
     runs += skip_rands; // offset runs by where we start from
     for (std::size_t i = 0; i < skip_rands; ++i)
     {
-      rng->uniform01();
+      ROS_WARN_STREAM_NAMED("temp","Skipping position " << i);
+      robot_state_->setToRandomPositions(joint_model_group, *rng);
     }
 
     for (std::size_t i = skip_rands; i < runs; ++i)
@@ -680,14 +699,8 @@ public:
       robot_state_->setToDefaultValues();
       goal_state_->setToDefaultValues();
 
-      static const std::string UPPER_BODY_GROUP = "whole_body_fixed";
-      //static const std::string UPPER_BODY_GROUP = "upper_body";
-
-      // Choose random end effector goal positions for left and right arm
-      const robot_model::JointModelGroup* upper_body = robot_model_->getJointModelGroup(UPPER_BODY_GROUP);
-
       // Stochastically random goal positions
-      robot_state_->setToRandomPositions(upper_body, *rng);
+      robot_state_->setToRandomPositions(joint_model_group, *rng);
 
       // hack to skip run 2 that is bad
       if (i == 1 && false)
@@ -697,25 +710,30 @@ public:
       }
 
       // Set the seed value from SRDF
-      setStateToGroupPose(goal_state_, "reset_whole_body", upper_body);
-      //setStateToGroupPose(goal_state_, "upper_body_ik_default", upper_body);
+      setStateToGroupPose(goal_state_, RESET_POSE, joint_model_group);
 
       // Check that the new state is valid
       robot_state_->enforceBounds();
-      if (!robot_state_->satisfiesBounds(upper_body))
+      if (!robot_state_->satisfiesBounds(joint_model_group))
       {
-        ROS_ERROR_STREAM_NAMED("setGroupToValue","New joint values do not satisfy bounds for group " << upper_body->getName());
+        ROS_ERROR_STREAM_NAMED("setGroupToValue","New joint values do not satisfy bounds for group " << joint_model_group->getName());
         exit(-1);
       }
 
       // Debug seed joint values:
+      if (true)
       {
-        std::vector<double> joints(upper_body->getVariableCount());
-        goal_state_->copyJointGroupPositions(upper_body, joints);
-        if (false)
+        std::vector<double> joints(joint_model_group->getVariableCount());
+        robot_state_->copyJointGroupPositions(joint_model_group, joints);
+
+        double epsilon = 0.05;
+        for (std::size_t j = 0; j < joints.size(); ++j)
         {
-          std::cout << "Seed input joints: " << std::endl;
-          std::copy(joints.begin(), joints.end(), std::ostream_iterator<double>(std::cout, "\n"));
+          if (joints[j] < joint_model_group->getJointModels()[j]->getVariableBounds()[0].min_position_ + epsilon)
+            std::cout << " LOW " << joint_model_group->getJointModels()[j]->getVariableBounds()[0].min_position_ << std::endl;
+
+          if (joints[j] > joint_model_group->getJointModels()[j]->getVariableBounds()[0].max_position_ - epsilon)
+            std::cout << " HIGH " << joint_model_group->getJointModels()[j]->getVariableBounds()[0].max_position_ << std::endl;
         }
       }
 
@@ -734,18 +752,18 @@ public:
 
       EigenSTL::vector_Affine3d poses;
       poses.push_back(left_eef_pose);
-      poses.push_back(right_eef_pose);
-      poses.push_back(left_foot_pose);
-      poses.push_back(right_foot_pose);
+      //poses.push_back(right_eef_pose);
+      //poses.push_back(left_foot_pose);
+      //poses.push_back(right_foot_pose);
 
       std::vector<std::string> tips;
       tips.push_back("LARM_LINK6");
-      tips.push_back("RARM_LINK6");
-      tips.push_back("LLEG_LINK5");
-      tips.push_back("RLEG_LINK5");
+      //tips.push_back("RARM_LINK6");
+      //tips.push_back("LLEG_LINK5");
+      //tips.push_back("RLEG_LINK5");
 
       // IK Solver
-      if (!goal_state_->setFromIK(upper_body, poses, tips, attempts, timeout))
+      if (!goal_state_->setFromIK(joint_model_group, poses, tips, attempts, timeout))
       {
         ROS_ERROR_STREAM_NAMED("demos","setFromIK failed");
         return false;
@@ -753,9 +771,9 @@ public:
 
       // Error check that the values are the same
       Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
-      Eigen::Affine3d right_eef_pose_new  = goal_state_->getGlobalLinkTransform("RARM_LINK6");
-      Eigen::Affine3d left_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
-      Eigen::Affine3d right_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
+      //Eigen::Affine3d right_eef_pose_new  = goal_state_->getGlobalLinkTransform("RARM_LINK6");
+      //Eigen::Affine3d left_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
+      //Eigen::Affine3d right_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
 
       bool passed = true;
       if (!poseIsSimilar(left_eef_pose, left_eef_pose_new))
@@ -763,6 +781,7 @@ public:
         ROS_ERROR_STREAM_NAMED("temp","Pose not similar: left_eef");
         passed = false;
       }
+      /*
       if (!poseIsSimilar(right_eef_pose, right_eef_pose_new))
       {
         ROS_ERROR_STREAM_NAMED("temp","Pose not similar: right_eef");
@@ -778,6 +797,7 @@ public:
         ROS_ERROR_STREAM_NAMED("temp","Pose not similar: right_foot");
         passed = false;
       }
+      */
 
       if (!passed)
       {

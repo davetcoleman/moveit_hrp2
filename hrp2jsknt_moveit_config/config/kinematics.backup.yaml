@@ -8,6 +8,16 @@ upper_body:
     - LARM_LINK6
 #    - RLEG_LINK5
 #    - LLEG_LINK5
+whole_body_fixed:
+  kinematics_solver: whole_body_kinematics_plugin/WholeBodyKinematicsPlugin
+  kinematics_solver_search_resolution: 0.005
+  kinematics_solver_timeout: 5
+  kinematics_solver_attempts: 1
+  kinematics_solver_ik_links: # put in same order as joint model group presents!
+    - LARM_LINK6
+    - RARM_LINK6
+    - LLEG_LINK5
+    - RLEG_LINK5
 left_arm:
   kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
   kinematics_solver_search_resolution: 0.005
