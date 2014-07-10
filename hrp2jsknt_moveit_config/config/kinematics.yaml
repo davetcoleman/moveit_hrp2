@@ -1,7 +1,9 @@
 left_arm:
-  kinematics_solver: whole_body_kinematics_plugin/WholeBodyKinematicsPlugin
+  #kinematics_solver: whole_body_kinematics_plugin/WholeBodyKinematicsPlugin
+  kinematics_solver: srv_kinematics_plugin/SrvKinematicsPlugin
   kinematics_solver_search_resolution: 0.005
   kinematics_solver_timeout: 0.005
   kinematics_solver_attempts: 3
   kinematics_solver_ik_links: # put in same order as joint model group presents!
     - LARM_LINK6
+  kinematics_solver_service_name: /solve_ik

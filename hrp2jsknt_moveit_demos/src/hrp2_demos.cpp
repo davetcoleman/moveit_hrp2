@@ -658,13 +658,13 @@ public:
   bool genWholeBodyIKRequests(int runs, std::size_t seed)
   {
     static const std::string JOINT_MODEL_GROUP = "left_arm";
-    static const std::string RESET_POSE = "reset_whole_body";
+    static const std::string RESET_POSE = "left_arm_ik_default";
 
     //static const std::string JOINT_MODEL_GROUP = "whole_body_fixed";
     //static const std::string RESET_POSE = "reset_whole_body";
 
     //static const std::string JOINT_MODEL_GROUP = "upper_body";
-    //static const std::string RESET_POSE = "reset_whole_body";
+    //static const std::string RESET_POSE = "upper_body_ik_default";
 
     random_numbers::RandomNumberGenerator *rng;
 
