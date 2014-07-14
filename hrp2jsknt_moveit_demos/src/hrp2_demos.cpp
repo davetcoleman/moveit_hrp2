@@ -599,7 +599,7 @@ public:
     robot_state->enforceBounds();
   }
 
-  void genWholeBodyIKRequestsSweep(int runs, std::size_t seed)
+  void genWholeBodyIKRequestsSweep(int runs, int problems, std::size_t seed)
   {
     // Whether to do parameter sweeping
     if (false)
@@ -607,11 +607,11 @@ public:
       // Save to file
       std::ofstream istream("/home/dave/ros/ik_data/times.dat");
 
-      double test_values[6] = { 0.0, 0.001, 0.01, 0.1, 0.25, 0.5 };
+      double test_values[7] = { 0.0, 0.0001, 0.001, 0.05, 0.01, 0.05, 0.1};
 
       // Vary alphas
       //for (double alpha = 0.0; alpha < 1.0; alpha += 0.05)
-      for (std::size_t i = 0; i < 6; ++i)
+      for (std::size_t i = 0; i < 7; ++i)
       {
         double alpha = test_values[i];
         ROS_WARN_STREAM_NAMED("temp","Testing alpha with value " << alpha);
@@ -622,7 +622,7 @@ public:
         nh_.setParam("alpha", alpha);
         ros::Duration(0.1).sleep();
 
-        double duration = genWholeBodyIKRequestsBenchmark(runs, seed);
+        double duration = genWholeBodyIKRequestsBenchmark(runs, problems, seed);
 
         // Save
         istream << alpha << "," << duration << std::endl;
@@ -632,21 +632,24 @@ public:
     }
     else
     {
-      genWholeBodyIKRequestsBenchmark(runs, seed);
+      genWholeBodyIKRequestsBenchmark(runs, problems, seed);
     }
   }
 
-  double genWholeBodyIKRequestsBenchmark(int runs, std::size_t seed)
+  double genWholeBodyIKRequestsBenchmark(int runs, int problems, std::size_t seed)
   {
     // Benchmark time
     ros::Time start_time;
     start_time = ros::Time::now();
 
-    // Run test
-    if (!genWholeBodyIKRequests(runs, seed))
+    for (std::size_t i = 0; i < runs; ++i)
     {
-      ROS_ERROR_STREAM_NAMED("temp","Test failed");
-      return 1000; // a large number
+      // Run test
+      if (!genWholeBodyIKRequests(problems, seed))
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Test failed");
+        return 1000; // a large number
+      }
     }
 
     // Benchmark time
@@ -656,17 +659,26 @@ public:
     return duration;
   }
 
-  bool genWholeBodyIKRequests(int runs, std::size_t seed)
+  bool genWholeBodyIKRequests(int problems, std::size_t seed)
   {
-    static const std::string JOINT_MODEL_GROUP = "left_arm";
-    static const std::string RESET_POSE = "left_arm_ik_default";
+    //static const std::string JOINT_MODEL_GROUP = "left_arm";
+    //static const std::string RESET_POSE = "left_arm_ik_default";
 
-    //static const std::string JOINT_MODEL_GROUP = "whole_body_fixed";
-    //static const std::string RESET_POSE = "reset_whole_body";
+    static const std::string JOINT_MODEL_GROUP = "whole_body_fixed";
+    static const std::string RESET_POSE = "reset_whole_body";
 
     //static const std::string JOINT_MODEL_GROUP = "upper_body";
     //static const std::string RESET_POSE = "upper_body_ik_default";
 
+    const robot_model::JointModelGroup* joint_model_group = robot_model_->getJointModelGroup(JOINT_MODEL_GROUP);
+
+    
+    std::vector<std::string> end_effector_names = joint_model_group->getAttachedEndEffectorNames();
+    std::cout << "End effector names: " << std::endl;
+    std::copy(end_effector_names.begin(), end_effector_names.end(), std::ostream_iterator<std::string>(std::cout, "\n"));
+
+
+    // Random number generator -----------------------------------------------------
     random_numbers::RandomNumberGenerator *rng;
 
     // Create random number generator that is stochastic
@@ -677,25 +689,24 @@ public:
     }
     else
     {
-      rng = new random_numbers::RandomNumberGenerator(seed); // seed value is always 1
+      rng = new random_numbers::RandomNumberGenerator(seed);
     }
 
-    // Choose random end effector goal positions for left and right arm
-    const robot_model::JointModelGroup* joint_model_group = robot_model_->getJointModelGroup(JOINT_MODEL_GROUP);
+    // Choose random end effector goal positions for left and right arm ------------------
 
     // Skip x number random numbers (for debugging)
     int skip_rands = 0; // set this to the id of the run you want to test
-    runs += skip_rands; // offset runs by where we start from
+    problems += skip_rands; // offset problems by where we start from
     for (std::size_t i = 0; i < skip_rands; ++i)
     {
       ROS_WARN_STREAM_NAMED("temp","Skipping position " << i);
       robot_state_->setToRandomPositions(joint_model_group, *rng);
     }
 
-    for (std::size_t i = skip_rands; i < runs; ++i)
+    for (std::size_t i = skip_rands; i < problems; ++i)
     {
       std::cout << std::endl;
-      ROS_INFO_STREAM_NAMED("temp","Testing number " << i+1 << " of " << runs << " ======================================");
+      ROS_INFO_STREAM_NAMED("temp","Testing number " << i+1 << " of " << problems << " ======================================");
 
       robot_state_->setToDefaultValues();
       goal_state_->setToDefaultValues();
@@ -749,19 +760,19 @@ public:
 
       // Use an IK solver to find the same solution
       unsigned int attempts = 1;
-      double timeout = 50;
+      double timeout = 5;
 
       EigenSTL::vector_Affine3d poses;
       poses.push_back(left_eef_pose);
-      //poses.push_back(right_eef_pose);
-      //poses.push_back(left_foot_pose);
-      //poses.push_back(right_foot_pose);
+      poses.push_back(right_eef_pose);
+      poses.push_back(left_foot_pose);
+      poses.push_back(right_foot_pose);
 
       std::vector<std::string> tips;
       tips.push_back("LARM_LINK6");
-      //tips.push_back("RARM_LINK6");
-      //tips.push_back("LLEG_LINK5");
-      //tips.push_back("RLEG_LINK5");
+      tips.push_back("RARM_LINK6");
+      tips.push_back("LLEG_LINK5");
+      tips.push_back("RLEG_LINK5");
 
       // IK Solver
       if (!goal_state_->setFromIK(joint_model_group, poses, tips, attempts, timeout))
@@ -772,9 +783,9 @@ public:
 
       // Error check that the values are the same
       Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
-      //Eigen::Affine3d right_eef_pose_new  = goal_state_->getGlobalLinkTransform("RARM_LINK6");
-      //Eigen::Affine3d left_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
-      //Eigen::Affine3d right_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
+      Eigen::Affine3d right_eef_pose_new  = goal_state_->getGlobalLinkTransform("RARM_LINK6");
+      Eigen::Affine3d left_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
+      Eigen::Affine3d right_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
 
       bool passed = true;
       if (!poseIsSimilar(left_eef_pose, left_eef_pose_new))
@@ -782,7 +793,7 @@ public:
         ROS_ERROR_STREAM_NAMED("temp","Pose not similar: left_eef");
         passed = false;
       }
-      /*
+
       if (!poseIsSimilar(right_eef_pose, right_eef_pose_new))
       {
         ROS_ERROR_STREAM_NAMED("temp","Pose not similar: right_eef");
@@ -798,7 +809,6 @@ public:
         ROS_ERROR_STREAM_NAMED("temp","Pose not similar: right_foot");
         passed = false;
       }
-      */
 
       if (!passed)
       {
@@ -814,7 +824,7 @@ public:
         //visual_tools_->publishRobotState(goal_state_);
       }
 
-    } // for runs
+    } // for problems
 
     return true;
   }
@@ -1202,7 +1212,8 @@ int main(int argc, char **argv)
 
   // Parse command line arguments
   int mode = 1;
-  int runs = 1;
+  int runs = 1; // how many times to run the same problem
+  int problems = 1; // how many problems to solve
   std::size_t seed = 0;
 
   for (std::size_t i = 0; i < argc; ++i)
@@ -1221,6 +1232,13 @@ int main(int argc, char **argv)
       ROS_INFO_STREAM_NAMED("main","Performing " << runs << " runs");
     }
 
+    if( std::string(argv[i]).compare("--problems") == 0 )
+    {
+      ++i;
+      problems = atoi(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","Performing " << problems << " problems");
+    }
+
     if( std::string(argv[i]).compare("--seed") == 0 )
     {
       ++i;
@@ -1236,46 +1254,46 @@ int main(int argc, char **argv)
     bool loop = false;
     do
     {
-      ROS_WARN_STREAM_NAMED("demos","-----------------------------------------------");
+      ROS_INFO_STREAM_NAMED("demos","-----------------------------------------------");
       switch (mode)
       {
         case 1:
-          ROS_WARN_STREAM_NAMED("demos","1 - Plan to a pre-defined crouching position, fixed feet");
+          ROS_INFO_STREAM_NAMED("demos","1 - Plan to a pre-defined crouching position, fixed feet");
           client.genCrouching();
           break;
         case 2:
-          ROS_WARN_STREAM_NAMED("demos","2 - Generate random walking positions and generate footsteps using ROS Service call to eulisp");
+          ROS_INFO_STREAM_NAMED("demos","2 - Generate random walking positions and generate footsteps using ROS Service call to eulisp");
           client.genRandWalking();
           break;
         case 3:
-          ROS_WARN_STREAM_NAMED("demos","3 - Plan with MoveIt + Lightning for different arm positions");
+          ROS_INFO_STREAM_NAMED("demos","3 - Plan with MoveIt + Lightning for different arm positions");
           client.genLightningPlans();
           break;
         case 4:
-          ROS_WARN_STREAM_NAMED("demos","4 - Generate random positions and plan to them with MoveIt (no walking)");
+          ROS_INFO_STREAM_NAMED("demos","4 - Generate random positions and plan to them with MoveIt (no walking)");
           client.genRandMoveItPlan();
           break;
         case 5:
-          ROS_WARN_STREAM_NAMED("demos","5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)");
+          ROS_INFO_STREAM_NAMED("demos","5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)");
           client.genRandLegConfigurations();
           break;
         case 6:
-          ROS_WARN_STREAM_NAMED("demos","6 - Generate completely random poses of robot");
+          ROS_INFO_STREAM_NAMED("demos","6 - Generate completely random poses of robot");
           client.genRandPoses();
         case 7:
-          ROS_WARN_STREAM_NAMED("demos","7 - Generate completely random poses of robot, then transform robot to foot on ground");
+          ROS_INFO_STREAM_NAMED("demos","7 - Generate completely random poses of robot, then transform robot to foot on ground");
           client.genRandPoseGrounded();
           break;
         case 8:
-          ROS_WARN_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using KDL-variant IK solver");
-          client.genWholeBodyIKRequestsSweep(runs, seed);
+          ROS_INFO_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using KDL-variant IK solver");
+          client.genWholeBodyIKRequestsSweep(runs, problems, seed);
           break;
         case 9:
           exit(0);
           break;
         case 0:
         default:
-          ROS_WARN_STREAM_NAMED("demos","0 - Loop through all these modes continously");
+          ROS_INFO_STREAM_NAMED("demos","0 - Loop through all these modes continously");
           loop = true;
       }
       // Increment mode if desired

@@ -1,9 +1,13 @@
-left_arm:
+whole_body_fixed:
   kinematics_solver: whole_body_kinematics_plugin/WholeBodyKinematicsPlugin
-  #kinematics_solver: srv_kinematics_plugin/SrvKinematicsPlugin
   kinematics_solver_search_resolution: 0.005
-  kinematics_solver_timeout: 0.005
-  kinematics_solver_attempts: 3
-  kinematics_solver_ik_links: # put in same order as joint model group presents!
+  kinematics_solver_timeout: 5
+  kinematics_solver_attempts: 1
+  kinematics_solver_ik_links:
     - LARM_LINK6
-  kinematics_solver_service_name: /solve_ik
+    - RARM_LINK6
+    - LLEG_LINK5
+    - RLEG_LINK5
+  kinematics_solver_verbose: false
+  kinematics_solver_debug_mode: true
+  kinematics_solver_visualize_search: false
