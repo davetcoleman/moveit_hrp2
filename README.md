@@ -130,5 +130,5 @@ Change this mode to different numbers:
 * 5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)
 * 6 - Generate completely random poses of robot 
 * 7 - Generate completely random poses of robot, then transform robot to foot on ground
-* 8 - Test single arm planning on HRP2 using KDL-variant IK solver
+* 8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver
 * 9 - Exit

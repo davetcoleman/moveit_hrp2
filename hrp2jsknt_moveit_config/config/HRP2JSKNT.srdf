@@ -256,22 +256,22 @@
         <joint name="RLEG_JOINT6" value="0" />
     </group_state>
     <group_state name="upper_body_ik_default" group="upper_body">
-        <joint name="CHEST_JOINT0" value="0" />
-        <joint name="CHEST_JOINT1" value="0" />
-        <joint name="LARM_JOINT0" value="-0.2" />
-        <joint name="LARM_JOINT1" value="0.2" />
-        <joint name="LARM_JOINT2" value="0.2" />
-        <joint name="LARM_JOINT3" value="-1" />
-        <joint name="LARM_JOINT4" value="-0.2" />
-        <joint name="LARM_JOINT5" value="-0.3067" />
-        <joint name="LARM_JOINT6" value="-0.3788" />
-        <joint name="RARM_JOINT0" value="-0.2" />
-        <joint name="RARM_JOINT1" value="-0.2" />
-        <joint name="RARM_JOINT2" value="0.2" />
-        <joint name="RARM_JOINT3" value="-1" />
-        <joint name="RARM_JOINT4" value="-0.2" />
-        <joint name="RARM_JOINT5" value="0.0361" />
-        <joint name="RARM_JOINT6" value="-0.4149" />
+        <joint name="CHEST_JOINT0" value="-0.00078" />
+        <joint name="CHEST_JOINT1" value="0.158016" />
+        <joint name="LARM_JOINT0" value="0.139904" />
+        <joint name="LARM_JOINT1" value="0.1" />
+        <joint name="LARM_JOINT2" value="0.2165" />
+        <joint name="LARM_JOINT3" value="-1.3961" />
+        <joint name="LARM_JOINT4" value="0.1" />
+        <joint name="LARM_JOINT5" value="0.1" />
+        <joint name="LARM_JOINT6" value="0.1" />
+        <joint name="RARM_JOINT0" value="0.1" />
+        <joint name="RARM_JOINT1" value="-0.1" />
+        <joint name="RARM_JOINT2" value="0.2165" />
+        <joint name="RARM_JOINT3" value="-1.3961" />
+        <joint name="RARM_JOINT4" value="0.1" />
+        <joint name="RARM_JOINT5" value="0.1" />
+        <joint name="RARM_JOINT6" value="0.1" />
     </group_state>
     <group_state name="left_arm_ik_default" group="left_arm">
         <joint name="LARM_JOINT0" value="-0.7648" />

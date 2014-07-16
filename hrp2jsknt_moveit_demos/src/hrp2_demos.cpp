@@ -50,6 +50,9 @@
 #include <moveit/planning_scene/planning_scene.h>
 #include <moveit/kinematic_constraints/utils.h>
 
+// OMPL
+//#include <moveit/ompl_interface/ompl.h>
+
 // MoveIt msgs
 #include <moveit_msgs/PlanningScene.h>
 #include <moveit_msgs/PositionConstraint.h>
@@ -322,7 +325,8 @@ public:
 
     // Get an arm to plan with
     const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup(left_arm_group);
-    goal_state_->setToRandomPositions(left_arm);
+    if (!setRandomValidState(goal_state_, left_arm))
+      exit(-1);
 
     // Visualize
     visual_tools_->publishRobotState(goal_state_);
@@ -348,9 +352,14 @@ public:
     req.num_planning_attempts = 1;
     req.allowed_planning_time = 30;
 
+    // temp
+    planning_interface::MotionPlanRequest req_backup = req;
+
     // Call pipeline
     loadPlanningPipeline(); // always call first
-    planning_pipeline_->generatePlan(planning_scene_, req, res);
+    std::vector<std::size_t> dummy;
+    planning_interface::PlanningContextPtr planning_context_handle;
+    planning_pipeline_->generatePlan(planning_scene_, req, res, dummy, planning_context_handle);
 
     // Check that the planning was successful
     if(res.error_code_.val != res.error_code_.SUCCESS)
@@ -364,9 +373,51 @@ public:
 
     // Visualize the trajectory
     ROS_INFO("Visualizing the trajectory");
-    ROS_DEBUG_STREAM_NAMED("temp","recieved trajectory: " << response.trajectory);
+    //ROS_DEBUG_STREAM_NAMED("temp","recieved trajectory: " << response.trajectory);
 
     visual_tools_->publishTrajectoryPath(response.trajectory);
+
+    // Save the solutions to file
+    //ompl_interface::OMPLPlannerManager ompl_planner = static_cast<ompl_interface::OMPLPlannerManager&>(
+    //planning_interface::PlannerManagerPtr ppl = planning_pipeline_->getPlannerManager();
+
+    //ompl::tools::Lightning lightning = planning_context_handle->getOMPLLightning();
+    ROS_WARN_STREAM_NAMED("temp","Process offline starting:");
+    if (!planning_context_handle)
+      ROS_ERROR_STREAM_NAMED("temp","No planning context available");
+
+    ROS_INFO_STREAM_NAMED("temp","Context handle name: " << planning_context_handle->getName());
+    //ppl->processOffline(planning_scene_, req_backup);
+    ROS_INFO_STREAM_NAMED("temp","Done processing offline");
+  }
+
+  bool setRandomValidState(robot_state::RobotStatePtr &state, const robot_model::JointModelGroup* jmg)
+  {
+    // Loop until a collision free state is found
+    static const int MAX_ATTEMPTS = 100;
+    int attempt_count = 0; // prevent loop for going forever
+    while (attempt_count < MAX_ATTEMPTS)
+    {
+      // Generate random staten
+      state->setToRandomPositions(jmg);
+
+      state->update(); // prevent dirty transforms
+
+      // Test for collision
+      if (planning_scene_->isStateValid(*state, "", false))
+        break;
+
+      attempt_count ++;
+    }
+
+    // Explain if no valid rand state found
+    if (attempt_count >= MAX_ATTEMPTS)
+    {
+      ROS_WARN("Unable to find a random collision free configuration after %d attempts", MAX_ATTEMPTS);
+      return false;
+    }
+
+    return true;
   }
 
   // Send to walking server to generate footsteps
@@ -402,7 +453,7 @@ public:
 
         // Create ROS Server Client
         walking_service_client_ = boost::make_shared<ros::ServiceClient>(nh_.serviceClient
-                                  <hrp2_moveit_msgs::GetWalkingMotion>(walking_service_name_));
+                                                                         <hrp2_moveit_msgs::GetWalkingMotion>(walking_service_name_));
         if (!walking_service_client_->waitForExistence(wait_for_server_time))
           ROS_WARN_STREAM_NAMED("srv","Unable to connect to ROS service client with name: " << walking_service_client_->getService());
         else
@@ -570,8 +621,8 @@ public:
       Eigen::Affine3d virtual_joint_transform  = robot_state_->getJointTransform("virtual_joint");
 
       double z_lowest_foot = std::min(
-        robot_state_->getGlobalLinkTransform("LLEG_LINK5").translation().z(),
-        robot_state_->getGlobalLinkTransform("RLEG_LINK5").translation().z());
+                                      robot_state_->getGlobalLinkTransform("LLEG_LINK5").translation().z(),
+                                      robot_state_->getGlobalLinkTransform("RLEG_LINK5").translation().z());
 
       // Create the transform for moving the virtual joint
       const Eigen::Affine3d down_transform(Eigen::Translation3d(0,0,-z_lowest_foot+z_default_foot_transform));
@@ -661,22 +712,42 @@ public:
 
   bool genWholeBodyIKRequests(int problems, std::size_t seed)
   {
-    //static const std::string JOINT_MODEL_GROUP = "left_arm";
-    //static const std::string RESET_POSE = "left_arm_ik_default";
+    std::string JOINT_MODEL_GROUP;
+    std::string RESET_POSE;
 
-    static const std::string JOINT_MODEL_GROUP = "whole_body_fixed";
-    static const std::string RESET_POSE = "reset_whole_body";
-
-    //static const std::string JOINT_MODEL_GROUP = "upper_body";
-    //static const std::string RESET_POSE = "upper_body_ik_default";
+    if (false)
+    {
+      JOINT_MODEL_GROUP = "left_arm";
+      RESET_POSE = "left_arm_ik_default";
+    }
+    else if (true)
+    {
+      JOINT_MODEL_GROUP = "whole_body_fixed";
+      RESET_POSE = "reset_whole_body";
+    }
+    else
+    {
+      JOINT_MODEL_GROUP = "upper_body";
+      RESET_POSE = "upper_body_ik_default";
+    }
 
     const robot_model::JointModelGroup* joint_model_group = robot_model_->getJointModelGroup(JOINT_MODEL_GROUP);
 
-    
-    std::vector<std::string> end_effector_names = joint_model_group->getAttachedEndEffectorNames();
-    std::cout << "End effector names: " << std::endl;
-    std::copy(end_effector_names.begin(), end_effector_names.end(), std::ostream_iterator<std::string>(std::cout, "\n"));
+    // Get tip links for this setup -----------------------------------------------
+    std::vector<std::string> tips;
 
+    for (std::size_t i = 0; i < joint_model_group->getAttachedEndEffectorNames().size(); ++i)
+    {
+      const robot_model::JointModelGroup *eef = robot_model_->getEndEffector(joint_model_group->getAttachedEndEffectorNames()[i]);
+      if (!eef)
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Unable to find joint model group for eef");
+        return false;
+      }
+      const std::string &eef_parent = eef->getEndEffectorParentGroup().second;
+
+      tips.push_back(eef_parent);
+    }
 
     // Random number generator -----------------------------------------------------
     random_numbers::RandomNumberGenerator *rng;
@@ -703,10 +774,10 @@ public:
       robot_state_->setToRandomPositions(joint_model_group, *rng);
     }
 
-    for (std::size_t i = skip_rands; i < problems; ++i)
+    for (std::size_t problem_id = skip_rands; problem_id < problems; ++problem_id)
     {
       std::cout << std::endl;
-      ROS_INFO_STREAM_NAMED("temp","Testing number " << i+1 << " of " << problems << " ======================================");
+      ROS_INFO_STREAM_NAMED("temp","Testing number " << problem_id+1 << " of " << problems << " ======================================");
 
       robot_state_->setToDefaultValues();
       goal_state_->setToDefaultValues();
@@ -715,7 +786,7 @@ public:
       robot_state_->setToRandomPositions(joint_model_group, *rng);
 
       // hack to skip run 2 that is bad
-      if (i == 1 && false)
+      if (problem_id == 1 && false)
       {
         ROS_WARN_STREAM_NAMED("temp","using skip run 2 hack");
         continue;
@@ -738,6 +809,16 @@ public:
         std::vector<double> joints(joint_model_group->getVariableCount());
         robot_state_->copyJointGroupPositions(joint_model_group, joints);
 
+        if (true)
+        {
+          // Show desired joint values
+          for (std::size_t i = 0; i < joints.size(); ++i)
+          {
+            std::cout << joints[i] << ", ";
+          }
+          std::cout << std::endl;
+        }
+
         double epsilon = 0.05;
         for (std::size_t j = 0; j < joints.size(); ++j)
         {
@@ -752,27 +833,16 @@ public:
       // Visualize
       visual_tools_->publishRobotState(robot_state_);
 
-      // Get the end effector pose
-      Eigen::Affine3d left_eef_pose  = robot_state_->getGlobalLinkTransform("LARM_LINK6");
-      Eigen::Affine3d right_eef_pose  = robot_state_->getGlobalLinkTransform("RARM_LINK6");
-      Eigen::Affine3d left_foot_pose  = robot_state_->getGlobalLinkTransform("LLEG_LINK5");
-      Eigen::Affine3d right_foot_pose  = robot_state_->getGlobalLinkTransform("RLEG_LINK5");
+      // Get the end effector poses
+      EigenSTL::vector_Affine3d poses;
+      for (std::size_t i = 0; i < tips.size(); ++i)
+      {
+        poses.push_back( robot_state_->getGlobalLinkTransform(tips[i]) );
+      }
 
       // Use an IK solver to find the same solution
       unsigned int attempts = 1;
-      double timeout = 5;
-
-      EigenSTL::vector_Affine3d poses;
-      poses.push_back(left_eef_pose);
-      poses.push_back(right_eef_pose);
-      poses.push_back(left_foot_pose);
-      poses.push_back(right_foot_pose);
-
-      std::vector<std::string> tips;
-      tips.push_back("LARM_LINK6");
-      tips.push_back("RARM_LINK6");
-      tips.push_back("LLEG_LINK5");
-      tips.push_back("RLEG_LINK5");
+      double timeout = 0; // unset
 
       // IK Solver
       if (!goal_state_->setFromIK(joint_model_group, poses, tips, attempts, timeout))
@@ -782,38 +852,26 @@ public:
       }
 
       // Error check that the values are the same
-      Eigen::Affine3d left_eef_pose_new  = goal_state_->getGlobalLinkTransform("LARM_LINK6");
-      Eigen::Affine3d right_eef_pose_new  = goal_state_->getGlobalLinkTransform("RARM_LINK6");
-      Eigen::Affine3d left_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
-      Eigen::Affine3d right_foot_pose_new  = goal_state_->getGlobalLinkTransform("RLEG_LINK5");
+      EigenSTL::vector_Affine3d poses_new;
+      for (std::size_t i = 0; i < tips.size(); ++i)
+      {
+        poses_new.push_back( goal_state_->getGlobalLinkTransform(tips[i]) );
+      }
 
       bool passed = true;
-      if (!poseIsSimilar(left_eef_pose, left_eef_pose_new))
+      for (std::size_t i = 0; i < tips.size(); ++i)
       {
-        ROS_ERROR_STREAM_NAMED("temp","Pose not similar: left_eef");
-        passed = false;
-      }
-
-      if (!poseIsSimilar(right_eef_pose, right_eef_pose_new))
-      {
-        ROS_ERROR_STREAM_NAMED("temp","Pose not similar: right_eef");
-        passed = false;
-      }
-      if (!poseIsSimilar(left_foot_pose, left_foot_pose_new))
-      {
-        ROS_ERROR_STREAM_NAMED("temp","Pose not similar: left_foot");
-        passed = false;
-      }
-      if (!poseIsSimilar(right_foot_pose, right_foot_pose_new))
-      {
-        ROS_ERROR_STREAM_NAMED("temp","Pose not similar: right_foot");
-        passed = false;
+        if (!poseIsSimilar(poses[i], poses_new[i]))
+        {
+          ROS_ERROR_STREAM_NAMED("temp","Pose not similar: " << tips[i]);
+          passed = false;
+        }
       }
 
       if (!passed)
       {
         std::cout << "=========================================================== " << std::endl;
-        ROS_ERROR_STREAM_NAMED("temp","POSES ARE NOT SIMILAR, BENCHMARK FAILED on test " << i);
+        ROS_ERROR_STREAM_NAMED("temp","POSES ARE NOT SIMILAR, BENCHMARK FAILED on test " << problem_id);
         std::cout << "=========================================================== " << std::endl;
         return false;
       }
@@ -839,12 +897,12 @@ public:
 
     //double similarity_threshold = 0.01;
     if (
-      abs(p1.position.x - p2.position.x) > std::numeric_limits<double>::epsilon() ||
-      abs(p1.position.y - p2.position.y) > std::numeric_limits<double>::epsilon() ||
-      abs(p1.position.z - p2.position.z) > std::numeric_limits<double>::epsilon() ||
-      quat1.angularDistance(quat2) > 3 //std::numeric_limits<double>::epsilon()
-      //      quat1.dot(quat2) < 1 - 100*std::numeric_limits<double>::epsilon() //using "dot" avoids a trigonometric function.
-    )
+        abs(p1.position.x - p2.position.x) > std::numeric_limits<double>::epsilon() ||
+        abs(p1.position.y - p2.position.y) > std::numeric_limits<double>::epsilon() ||
+        abs(p1.position.z - p2.position.z) > std::numeric_limits<double>::epsilon() ||
+        quat1.angularDistance(quat2) > 3 //std::numeric_limits<double>::epsilon()
+        //      quat1.dot(quat2) < 1 - 100*std::numeric_limits<double>::epsilon() //using "dot" avoids a trigonometric function.
+        )
     {
       if (abs(p1.position.x - p2.position.x) > std::numeric_limits<double>::epsilon())
         std::cout << "Diff x: " << std::setprecision(12) << abs(p1.position.x - p2.position.x)  << std::endl;
@@ -882,10 +940,10 @@ public:
 
     // Rotation
     Eigen::Quaternion<float>q(
-      goal_state->getVariablePosition("virtual_joint/rot_w"),
-      goal_state->getVariablePosition("virtual_joint/rot_x"),
-      goal_state->getVariablePosition("virtual_joint/rot_y"),
-      goal_state->getVariablePosition("virtual_joint/rot_z"));
+                              goal_state->getVariablePosition("virtual_joint/rot_w"),
+                              goal_state->getVariablePosition("virtual_joint/rot_x"),
+                              goal_state->getVariablePosition("virtual_joint/rot_y"),
+                              goal_state->getVariablePosition("virtual_joint/rot_z"));
     Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::VisualTools::dRand(-20,20) * M_PI / 180, Eigen::Vector3f::UnitZ()));
     q = q * rotate;
 
@@ -953,10 +1011,10 @@ public:
 
     // Rotation
     Eigen::Quaternion<float>q(
-      goal_state->getVariablePosition("virtual_joint/rot_w"),
-      goal_state->getVariablePosition("virtual_joint/rot_x"),
-      goal_state->getVariablePosition("virtual_joint/rot_y"),
-      goal_state->getVariablePosition("virtual_joint/rot_z"));
+                              goal_state->getVariablePosition("virtual_joint/rot_w"),
+                              goal_state->getVariablePosition("virtual_joint/rot_x"),
+                              goal_state->getVariablePosition("virtual_joint/rot_y"),
+                              goal_state->getVariablePosition("virtual_joint/rot_z"));
     Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::VisualTools::dRand(-15,15) * M_PI / 180, Eigen::Vector3f::UnitZ()));
     q = q * rotate;
 
@@ -1285,7 +1343,7 @@ int main(int argc, char **argv)
           client.genRandPoseGrounded();
           break;
         case 8:
-          ROS_INFO_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using KDL-variant IK solver");
+          ROS_INFO_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");
           client.genWholeBodyIKRequestsSweep(runs, problems, seed);
           break;
         case 9:

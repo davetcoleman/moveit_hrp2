@@ -1,13 +1,19 @@
 whole_body_fixed:
   kinematics_solver: whole_body_kinematics_plugin/WholeBodyKinematicsPlugin
   kinematics_solver_search_resolution: 0.005
-  kinematics_solver_timeout: 5
-  kinematics_solver_attempts: 1
   kinematics_solver_ik_links:
     - LARM_LINK6
     - RARM_LINK6
     - LLEG_LINK5
     - RLEG_LINK5
+  kinematics_solver_max_solver_iterations: 300 # how many times to perform newton raphson iterations before trying a different seed state
+  kinematics_solver_timeout: 100 # amount of time allowed before giving up
   kinematics_solver_verbose: false
   kinematics_solver_debug_mode: true
-  kinematics_solver_visualize_search: false
+  kinematics_solver_visualize_search: true
+  kinematics_solver_epsilon: 0.00001 #1e-5   # how close the end effector position has to be before it is considered solved
+  kinematics_solver_null_space_epsilon: 0.3
+  kinematics_solver_null_space_vel_gain: 0.1
+  kinematics_solver_ee_pos_vel_limit: 0.1
+  kinematics_solver_ee_rot_vel_limit: 1 # essentially turned off
+  kinematics_solver_joint_velocity_max_ratio: 0.25  #0.5 #0.25
