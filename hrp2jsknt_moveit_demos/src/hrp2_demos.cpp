@@ -51,7 +51,7 @@
 #include <moveit/kinematic_constraints/utils.h>
 
 // OMPL
-//#include <moveit/ompl_interface/ompl.h>
+#include <moveit/ompl_interface/model_based_planning_context.h>
 
 // MoveIt msgs
 #include <moveit_msgs/PlanningScene.h>
@@ -67,6 +67,7 @@
 
 // Boost
 #include <boost/filesystem.hpp>
+#include <boost/pointer_cast.hpp>
 
 namespace hrp2jsknt_moveit_demos
 {
@@ -381,13 +382,17 @@ public:
     //ompl_interface::OMPLPlannerManager ompl_planner = static_cast<ompl_interface::OMPLPlannerManager&>(
     //planning_interface::PlannerManagerPtr ppl = planning_pipeline_->getPlannerManager();
 
-    //ompl::tools::Lightning lightning = planning_context_handle->getOMPLLightning();
     ROS_WARN_STREAM_NAMED("temp","Process offline starting:");
     if (!planning_context_handle)
       ROS_ERROR_STREAM_NAMED("temp","No planning context available");
 
     ROS_INFO_STREAM_NAMED("temp","Context handle name: " << planning_context_handle->getName());
-    //ppl->processOffline(planning_scene_, req_backup);
+
+    ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::static_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
+    ompl::tools::Lightning lightning = mbpc->getOMPLLightning();
+    lightning.saveIfChanged();
+
+
     ROS_INFO_STREAM_NAMED("temp","Done processing offline");
   }
 
