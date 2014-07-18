@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(hrp2jsknt_moveit_demos)
 
 find_package(catkin REQUIRED COMPONENTS
+  ompl_rviz_viewer
   moveit_planners_ompl
   random_numbers
   moveit_core 
@@ -13,11 +14,12 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen REQUIRED)
-find_package(Boost REQUIRED system filesystem date_time thread serialization)
+find_package(Boost REQUIRED system filesystem date_time thread) # serialization)
 
 catkin_package(
 #  INCLUDE_DIRS include
   CATKIN_DEPENDS
+    ompl_rviz_viewer
     moveit_planners_ompl
     random_numbers
     moveit_core

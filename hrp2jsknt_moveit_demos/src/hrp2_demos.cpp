@@ -52,6 +52,8 @@
 
 // OMPL
 #include <moveit/ompl_interface/model_based_planning_context.h>
+#include <ompl/tools/lightning/Lightning.h>
+#include <ompl_rviz_viewer/ompl_rviz_viewer.h>
 
 // MoveIt msgs
 #include <moveit_msgs/PlanningScene.h>
@@ -72,18 +74,18 @@
 namespace hrp2jsknt_moveit_demos
 {
 
-static const std::string PLANNING_GROUP = "whole_body";
 static const std::string ROBOT_DESCRIPTION = "robot_description";
 
 class HRP2Demos
 {
 public:
-  HRP2Demos(int mode)
+  HRP2Demos(int mode, const std::string planning_group_name)
     : nh_("~")
     , walking_service_name_("/generate_walking_service")
     , sleep_time_(0.5) // time to wait on ROS messages to clear
     , walking_client_loaded_(false)
     , robot_model_loader_(ROBOT_DESCRIPTION) // load the URDF
+    , planning_group_name_(planning_group_name)
   {
     // Load the robot model
     robot_model_ = robot_model_loader_.getModel(); // Get a shared pointer to the robot
@@ -92,7 +94,7 @@ public:
     planning_scene_.reset(new planning_scene::PlanningScene(robot_model_));
 
     // Get the configuration for the joints in the group
-    whole_body_group_ = robot_model_->getJointModelGroup(PLANNING_GROUP);
+    joint_model_group_ = robot_model_->getJointModelGroup(planning_group_name);
 
     // Create robot states
     robot_state_.reset(new robot_state::RobotState(robot_model_));
@@ -221,8 +223,8 @@ public:
 
   void genRandMoveItPlan()
   {
-    setStateToGroupPose(goal_state_,  "reset_whole_body", whole_body_group_);
-    setStateToGroupPose(robot_state_, "reset_whole_body", whole_body_group_);
+    setStateToGroupPose(goal_state_,  "reset_whole_body", joint_model_group_);
+    setStateToGroupPose(robot_state_, "reset_whole_body", joint_model_group_);
 
     // Generate random goal positions
     ros::Rate loop_rate(1);
@@ -285,12 +287,12 @@ public:
       // Goal constraint
       double tolerance_pose = 0.0001;
       moveit_msgs::Constraints goal_constraint =
-        kinematic_constraints::constructGoalConstraints(*goal_state_, whole_body_group_, tolerance_pose, tolerance_pose);
+        kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_, tolerance_pose, tolerance_pose);
       req.goal_constraints.push_back(goal_constraint);
 
       // Other settings
       req.planner_id = "RRTConnectkConfigDefault";
-      req.group_name = PLANNING_GROUP;
+      req.group_name = planning_group_name_;
       req.num_planning_attempts = 1;
       req.allowed_planning_time = 30;
 
@@ -322,12 +324,9 @@ public:
     robot_state_->setToDefaultValues();
     goal_state_->setToDefaultValues();
 
-    static const std::string left_arm_group = "left_arm";
-
-    // Get an arm to plan with
-    const robot_model::JointModelGroup* left_arm = robot_model_->getJointModelGroup(left_arm_group);
-    if (!setRandomValidState(goal_state_, left_arm))
-      exit(-1);
+    // Make random goal state
+    if (!setRandomValidState(goal_state_, joint_model_group_))
+      return;
 
     // Visualize
     visual_tools_->publishRobotState(goal_state_);
@@ -344,13 +343,13 @@ public:
     // Goal constraint
     double tolerance_pose = 0.0001;
     moveit_msgs::Constraints goal_constraint =
-      kinematic_constraints::constructGoalConstraints(*goal_state_, left_arm, tolerance_pose, tolerance_pose);
+      kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_, tolerance_pose, tolerance_pose);
     req.goal_constraints.push_back(goal_constraint);
 
     // Other settings
     req.planner_id = "RRTConnectkConfigDefault";
-    req.group_name = left_arm_group;
-    req.num_planning_attempts = 1;
+    req.group_name = planning_group_name_;
+    req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
     req.allowed_planning_time = 30;
 
     // temp
@@ -361,6 +360,10 @@ public:
     std::vector<std::size_t> dummy;
     planning_interface::PlanningContextPtr planning_context_handle;
     planning_pipeline_->generatePlan(planning_scene_, req, res, dummy, planning_context_handle);
+
+    //std::cout << "File path from long line is: " <<
+    //  boost::static_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle)->getOMPLLightning().getFilePath() << std::endl;
+
 
     // Check that the planning was successful
     if(res.error_code_.val != res.error_code_.SUCCESS)
@@ -382,7 +385,7 @@ public:
     //ompl_interface::OMPLPlannerManager ompl_planner = static_cast<ompl_interface::OMPLPlannerManager&>(
     //planning_interface::PlannerManagerPtr ppl = planning_pipeline_->getPlannerManager();
 
-    ROS_WARN_STREAM_NAMED("temp","Process offline starting:");
+    ROS_WARN_STREAM_NAMED("temp","Saving experience db...");
     if (!planning_context_handle)
       ROS_ERROR_STREAM_NAMED("temp","No planning context available");
 
@@ -429,8 +432,8 @@ public:
   void genRandWalking()
   {
     // Set to crouching position
-    setStateToGroupPose(goal_state_,  "reset_whole_body", whole_body_group_);
-    setStateToGroupPose(robot_state_, "reset_whole_body", whole_body_group_);
+    setStateToGroupPose(goal_state_,  "reset_whole_body", joint_model_group_);
+    setStateToGroupPose(robot_state_, "reset_whole_body", joint_model_group_);
 
     // Generate random goal positions
     ros::Rate loop_rate(1);
@@ -492,14 +495,6 @@ public:
 
         if (true) // use moveit's built in trajectory publisher
         {
-          // The corresponding robot state (copy from request)
-          /*
-            display_trajectory_msg_.trajectory_start = walking_srv.request.start_state;
-            display_trajectory_msg_.trajectory.clear();
-            display_trajectory_msg_.trajectory.push_back();
-            // TODO: remove and only use moveit_visual_tools
-            robot_trajectory_publisher_.publish(display_trajectory_msg_);
-          */
           visual_tools_->publishTrajectoryPath(walking_srv.response.trajectory);
         }
         else // use our custom one
@@ -507,7 +502,7 @@ public:
           moveit_msgs::RobotTrajectory trajectory = walking_srv.response.trajectory;
 
           // Convert to a MoveIt datastructure
-          robot_trajectory::RobotTrajectory robot_traj(robot_model_, PLANNING_GROUP);
+          robot_trajectory::RobotTrajectory robot_traj(robot_model_, planning_group_name_);
           robot_traj.setRobotTrajectoryMsg(*robot_state_, trajectory);
 
           // loop through each trajectory point and display in rviz
@@ -583,21 +578,65 @@ public:
     ros::Duration(1.0).sleep();
   }
 
-  // Show random poses
-  void genRandPoses()
+  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=6 group:=left_arm
+  void displayLightningPlans()
   {
-    // loop at 1 Hz
-    ros::Rate loop_rate(1);
+    static const std::string database_directory = "";
 
-    for (int counter=0; counter<10 && ros::ok(); counter++)
+    // use planning pipeline to load many of our components
+    loadPlanningPipeline(); // always call first    
+    const planning_interface::PlannerManagerPtr& pm = planning_pipeline_->getPlannerManager();
+
+    // Fake request to get a context
+    planning_interface::MotionPlanRequest req;
+    planning_interface::MotionPlanResponse res;
+    req.planner_id = "RRTConnectkConfigDefault";
+    req.group_name = planning_group_name_;
+    // Goal constraint
+    double tolerance_pose = 0.0001;
+    moveit_msgs::Constraints goal_constraint =
+      kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_, tolerance_pose, tolerance_pose);
+    req.goal_constraints.push_back(goal_constraint);
+
+    // Get context with dummy request
+    const planning_interface::PlanningContextPtr& context = pm->getPlanningContext(planning_scene_, req, res.error_code_);
+    const ompl_interface::ModelBasedPlanningContextPtr& mbp_context = boost::static_pointer_cast<ompl_interface::ModelBasedPlanningContext>(context);
+
+    // Get lightning
+    const ompl::tools::Lightning& lightning = mbp_context->getOMPLLightning();    
+    std::cout << "lightning file location: " << lightning.getFilePath() << std::endl;
+
+    // Display all of the saved paths
+    std::vector<ompl::base::PlannerDataPtr> paths;
+    lightning.getAllPaths(paths);
+
+    ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths: " << paths.size());
+
+    // Load the tool for displaying in Rviz
+    bool verbose = true;
+    ompl_viewer_.reset(new ompl_rviz_viewer::OmplRvizViewer("/body"));
+    ompl_viewer_->setSpaceInformation(lightning.getSpaceInformation());
+
+    // Assume the last link in the joint model group is the tip
+    const moveit::core::LinkModel *tip_link = joint_model_group_->getLinkModels().back(); 
+
+    ros::Duration(1).sleep();
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << "after link model " << std::endl;
+
+    // Show all paths
+    for (std::size_t i = 0; i < 1; ++i) //paths.size(); ++i)
     {
-      robot_state_->setToRandomPositions(whole_body_group_);
+        std::cout << "publish path " << i << std::endl;
+        ompl_viewer_->publishRobotPath( mbp_context, tip_link, paths[i], moveit_visual_tools::RAND );
+        std::cout << "done publish path " << std::endl;
 
-      visual_tools_->publishRobotState(robot_state_);
-
-      // let ROS send the message, then wait a while
-      loop_rate.sleep();
     }
+
+    // TODO testing
+    //context->terminate();
   }
 
   void genRandPoseGrounded()
@@ -655,7 +694,7 @@ public:
     robot_state->enforceBounds();
   }
 
-  void genWholeBodyIKRequestsSweep(int runs, int problems, std::size_t seed)
+  void genIKRequestsSweep(int runs, int problems, std::size_t seed)
   {
     // Whether to do parameter sweeping
     if (false)
@@ -678,7 +717,7 @@ public:
         nh_.setParam("alpha", alpha);
         ros::Duration(0.1).sleep();
 
-        double duration = genWholeBodyIKRequestsBenchmark(runs, problems, seed);
+        double duration = genIKRequestsBenchmark(runs, problems, seed);
 
         // Save
         istream << alpha << "," << duration << std::endl;
@@ -688,11 +727,11 @@ public:
     }
     else
     {
-      genWholeBodyIKRequestsBenchmark(runs, problems, seed);
+      genIKRequestsBenchmark(runs, problems, seed);
     }
   }
 
-  double genWholeBodyIKRequestsBenchmark(int runs, int problems, std::size_t seed)
+  double genIKRequestsBenchmark(int runs, int problems, std::size_t seed)
   {
     // Benchmark time
     ros::Time start_time;
@@ -701,7 +740,7 @@ public:
     for (std::size_t i = 0; i < runs; ++i)
     {
       // Run test
-      if (!genWholeBodyIKRequests(problems, seed))
+      if (!genIKRequests(problems, seed))
       {
         ROS_ERROR_STREAM_NAMED("temp","Test failed");
         return 1000; // a large number
@@ -715,28 +754,31 @@ public:
     return duration;
   }
 
-  bool genWholeBodyIKRequests(int problems, std::size_t seed)
+  // Get the starting pose that corresponds to selected planning group
+  std::string getStartPose(const std::string& planning_group)
   {
-    std::string JOINT_MODEL_GROUP;
-    std::string RESET_POSE;
-
-    if (false)
+    if (planning_group == "left_arm")
     {
-      JOINT_MODEL_GROUP = "left_arm";
-      RESET_POSE = "left_arm_ik_default";
+      return "left_arm_ik_default";
     }
-    else if (true)
+    else if (planning_group == "whole_body_fixed")
     {
-      JOINT_MODEL_GROUP = "whole_body_fixed";
-      RESET_POSE = "reset_whole_body";
+      return "reset_whole_body";
     }
-    else
+    else if (planning_group == "upper_body")
     {
-      JOINT_MODEL_GROUP = "upper_body";
-      RESET_POSE = "upper_body_ik_default";
+      return "upper_body_ik_default";
     }
 
-    const robot_model::JointModelGroup* joint_model_group = robot_model_->getJointModelGroup(JOINT_MODEL_GROUP);
+    ROS_ERROR_STREAM_NAMED("temp","Unknown planning group, no start pose found.");
+    exit(-1);
+  }
+
+  bool genIKRequests(int problems, std::size_t seed)
+  {
+    // Get the starting pose that corresponds to selected planning group
+    std::string start_pose = getStartPose(planning_group_name_);
+    const robot_model::JointModelGroup* joint_model_group = joint_model_group_;
 
     // Get tip links for this setup -----------------------------------------------
     std::vector<std::string> tips;
@@ -798,7 +840,7 @@ public:
       }
 
       // Set the seed value from SRDF
-      setStateToGroupPose(goal_state_, RESET_POSE, joint_model_group);
+      setStateToGroupPose(goal_state_, start_pose, joint_model_group);
 
       // Check that the new state is valid
       robot_state_->enforceBounds();
@@ -1179,13 +1221,13 @@ public:
     // Goal constraint
     double tolerance_pose = 0.0001;
     moveit_msgs::Constraints goal_constraint =
-      kinematic_constraints::constructGoalConstraints(*goal_state_, whole_body_group_, tolerance_pose, tolerance_pose);
+      kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_, tolerance_pose, tolerance_pose);
     req.goal_constraints.push_back(goal_constraint);
 
     // Other settings
     //req.planner_id = "RRTkConfigDefault"; // Regular RRT
     req.planner_id = "RRTConnectkConfigDefault";
-    req.group_name = PLANNING_GROUP;
+    req.group_name = planning_group_name_;
     req.num_planning_attempts = 1;
     req.allowed_planning_time = 30;
 
@@ -1246,7 +1288,8 @@ private:
   robot_state::RobotStatePtr goal_state_;
   robot_state::RobotStatePtr blank_state_;
 
-  robot_model::JointModelGroup* whole_body_group_;
+  robot_model::JointModelGroup* joint_model_group_; // selected by user
+  std::string planning_group_name_; // allow to change planning group from command line
 
   planning_scene::PlanningScenePtr planning_scene_;
   planning_pipeline::PlanningPipelinePtr planning_pipeline_;
@@ -1257,6 +1300,10 @@ private:
   ros::Duration sleep_time_;
 
   bool walking_client_loaded_; // only load when we need it
+
+  // The visual tools for interfacing with Rviz
+  ompl_rviz_viewer::OmplRvizViewerPtr ompl_viewer_;
+
 }; // class
 
 } // namespace
@@ -1277,6 +1324,7 @@ int main(int argc, char **argv)
   int mode = 1;
   int runs = 1; // how many times to run the same problem
   int problems = 1; // how many problems to solve
+  std::string planning_group_name = "whole_body";
   std::size_t seed = 0;
 
   for (std::size_t i = 0; i < argc; ++i)
@@ -1308,9 +1356,16 @@ int main(int argc, char **argv)
       seed = atoi(argv[i]);
       ROS_INFO_STREAM_NAMED("main","Using seed " << seed);
     }
+
+    if( std::string(argv[i]).compare("--group") == 0 )
+    {
+      ++i;
+      planning_group_name = argv[i];
+      ROS_INFO_STREAM_NAMED("main","Using planning group " << planning_group_name);
+    }
   }
 
-  hrp2jsknt_moveit_demos::HRP2Demos client(mode);
+  hrp2jsknt_moveit_demos::HRP2Demos client(mode, planning_group_name);
 
   while (ros::ok()) // continuously prompt user to do demos
   {
@@ -1341,15 +1396,16 @@ int main(int argc, char **argv)
           client.genRandLegConfigurations();
           break;
         case 6:
-          ROS_INFO_STREAM_NAMED("demos","6 - Generate completely random poses of robot");
-          client.genRandPoses();
+          ROS_INFO_STREAM_NAMED("demos","6 - Show the experience database visually in Rviz");
+          client.displayLightningPlans();
+          break;
         case 7:
           ROS_INFO_STREAM_NAMED("demos","7 - Generate completely random poses of robot, then transform robot to foot on ground");
           client.genRandPoseGrounded();
           break;
         case 8:
           ROS_INFO_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");
-          client.genWholeBodyIKRequestsSweep(runs, problems, seed);
+          client.genIKRequestsSweep(runs, problems, seed);
           break;
         case 9:
           exit(0);

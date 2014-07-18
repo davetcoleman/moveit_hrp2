@@ -128,7 +128,7 @@ Change this mode to different numbers:
 * 3 - Plan with MoveIt + Lightning for different arm positions
 * 4 - Generate random walking positions and plan to them with MoveIt (no walking)
 * 5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)
-* 6 - Generate completely random poses of robot 
+* 6 - Show the experience database visually in Rviz
 * 7 - Generate completely random poses of robot, then transform robot to foot on ground
 * 8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver
 * 9 - Exit

@@ -15,6 +15,7 @@
   <arg name="runs" default="1" />
   <arg name="problems" default="1" />
   <arg name="verbose" default="0" />
+  <arg name="group" default="whole_body" />
 
   <!-- Planning Functionality -->
   <include ns="hrp2jsknt_moveit_demos" file="$(find hrp2jsknt_moveit_config)/launch/planning_pipeline.launch.xml">
@@ -23,7 +24,7 @@
 
   <node name="hrp2jsknt_moveit_demos" pkg="hrp2jsknt_moveit_demos" type="hrp2_demos" respawn="false" 
 	launch-prefix="$(arg launch_prefix)" output="screen" 
-	args="--mode $(arg mode) --seed $(arg seed) --runs $(arg runs) --problems $(arg problems) --verbose $(arg verbose)">
+	args="--mode $(arg mode) --seed $(arg seed) --runs $(arg runs) --problems $(arg problems) --verbose $(arg verbose) --group $(arg group)">
 
     <!-- DTC Testing -->
     <param name="constraint_samplers" value=""/>
