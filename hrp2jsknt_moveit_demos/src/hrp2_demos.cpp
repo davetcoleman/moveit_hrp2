@@ -52,6 +52,7 @@
 
 // OMPL
 #include <moveit/ompl_interface/model_based_planning_context.h>
+#include <moveit/ompl_interface/parameterization/joint_space/joint_model_state_space.h>
 #include <ompl/tools/lightning/Lightning.h>
 #include <ompl_rviz_viewer/ompl_rviz_viewer.h>
 
@@ -75,6 +76,8 @@ namespace hrp2jsknt_moveit_demos
 {
 
 static const std::string ROBOT_DESCRIPTION = "robot_description";
+static const std::string MARKER_TOPIC = "/hrp2_visual_markers";
+static const std::string BASE_LINK = "/body";//odom?
 
 class HRP2Demos
 {
@@ -102,7 +105,7 @@ public:
     goal_state_.reset(new robot_state::RobotState(*robot_state_));
 
     // Load the Robot Viz Tools for publishing to Rviz
-    visual_tools_.reset(new moveit_visual_tools::VisualTools("/odom","/hrp2_visual_markers", robot_model_));
+    visual_tools_.reset(new moveit_visual_tools::VisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
     visual_tools_->loadRobotStatePub("/hrp2_demos");
 
     // Used for clearing out robot state
@@ -391,12 +394,91 @@ public:
 
     ROS_INFO_STREAM_NAMED("temp","Context handle name: " << planning_context_handle->getName());
 
-    ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::static_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
+    ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
     ompl::tools::Lightning lightning = mbpc->getOMPLLightning();
     lightning.saveIfChanged();
 
 
     ROS_INFO_STREAM_NAMED("temp","Done processing offline");
+
+
+    boost::shared_ptr<ompl_interface::JointModelStateSpace> jmss =
+      boost::dynamic_pointer_cast<ompl_interface::JointModelStateSpace>(mbpc->getOMPLStateSpace());
+    jmss->printSettings(std::cout);
+
+
+    // Now display path
+    // Display all of the saved paths
+    std::vector<ompl::base::PlannerDataPtr> paths;
+    lightning.getAllPaths(paths);
+
+    ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths: " << paths.size());
+
+    // Assume the last link in the joint model group is the tip
+    const moveit::core::LinkModel *tip_link = joint_model_group_->getLinkModels().back();
+
+    for (std::size_t j = 0; j < paths.size(); ++j)
+    {
+      std::cout << "Processing PATH " << j << " ---------------------------" << std::endl;
+
+      og::PathGeometric path(lightning.getSpaceInformation());
+      // Convert the planner data verticies into a vector of states
+      for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
+        path.append(paths[j]->getVertex(i).getState());
+
+      robot_trajectory::RobotTrajectory traj(robot_model_, planning_group_name_);
+      mbpc->convertPath(path, traj);
+      visual_tools_->publishTrajectoryPath(traj, true);
+
+      ROS_WARN_STREAM_NAMED("temp","sleeping 1");
+      ros::Duration(1.0).sleep();
+
+      //void ompl_interface::ModelBasedPlanningContext::convertPath(const ompl::geometric::PathGeometric &pg, robot_trajectory::RobotTrajectory &traj) const
+
+      /*
+      // Each state in the path
+      for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
+      {
+        std::cout << "Printing state " << i << std::endl;
+
+        if (!paths[j]->getVertex(i).getState())
+          ROS_ERROR_STREAM_NAMED("temp","no state found");
+        else
+          std::cout << "State:" << paths[j]->getVertex(i).getState() << std::endl;
+
+        if (!mbpc->getOMPLStateSpace())  // const ModelBasedStateSpacePtr
+          ROS_ERROR_STREAM_NAMED("temp","no state space!");
+        else
+        {
+          mbpc->getOMPLStateSpace()->printSettings(std::cout);
+          std::cout << "Joint model group name: "<< mbpc->getOMPLStateSpace()->getJointModelGroupName()  << std::endl;
+          //std::cout << "dimension: " << mbpc->getOMPLStateSpace()->getDimension() << std::endl;
+        }
+
+        // NOTE THIS IS JMSS
+        jmss->printState( paths[j]->getVertex(i).getState(), std::cout);
+
+        jmss->copyToRobotState( *robot_state_, paths[j]->getVertex(i).getState() );
+        visual_tools_->publishRobotState(robot_state_);
+
+        Eigen::Affine3d pose;
+        pose = robot_state_->getGlobalLinkTransform(tip_link);
+        // Debug pose
+        std::cout << "Pose: " << i << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
+        //visual_tools_->publishSphere(pose, moveit_visual_tools::WHITE, moveit_visual_tools::LARGE);
+
+        ros::Duration(1).sleep();
+
+      }
+
+      */
+
+    } // each path
+    
+
+
+
+
   }
 
   bool setRandomValidState(robot_state::RobotStatePtr &state, const robot_model::JointModelGroup* jmg)
@@ -584,7 +666,7 @@ public:
     static const std::string database_directory = "";
 
     // use planning pipeline to load many of our components
-    loadPlanningPipeline(); // always call first    
+    loadPlanningPipeline(); // always call first
     const planning_interface::PlannerManagerPtr& pm = planning_pipeline_->getPlannerManager();
 
     // Fake request to get a context
@@ -600,11 +682,20 @@ public:
 
     // Get context with dummy request
     const planning_interface::PlanningContextPtr& context = pm->getPlanningContext(planning_scene_, req, res.error_code_);
-    const ompl_interface::ModelBasedPlanningContextPtr& mbp_context = boost::static_pointer_cast<ompl_interface::ModelBasedPlanningContext>(context);
+
+    ros::Duration(1).sleep();
+    std::cout << "Waiting for context to be ready " << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    const ompl_interface::ModelBasedPlanningContextPtr& mbp_context = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(context);
 
     // Get lightning
-    const ompl::tools::Lightning& lightning = mbp_context->getOMPLLightning();    
+    const ompl::tools::Lightning& lightning = mbp_context->getOMPLLightning();
     std::cout << "lightning file location: " << lightning.getFilePath() << std::endl;
+
+    //const ompl_interface::ModelBasedStateSpacePtr model_state_space = mbp_context->getOMPLStateSpace();
+    //std::cout << "Dimension: " << model_state_space->getDimension() << std::endl;
 
     // Display all of the saved paths
     std::vector<ompl::base::PlannerDataPtr> paths;
@@ -613,27 +704,64 @@ public:
     ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths: " << paths.size());
 
     // Load the tool for displaying in Rviz
-    bool verbose = true;
-    ompl_viewer_.reset(new ompl_rviz_viewer::OmplRvizViewer("/body"));
-    ompl_viewer_->setSpaceInformation(lightning.getSpaceInformation());
+    //ompl_viewer_.reset(new ompl_rviz_viewer::OmplRvizViewer(BASE_LINK, MARKER_TOPIC, robot_model_));
+    //ompl_viewer_->setSpaceInformation(lightning.getSpaceInformation());
 
     // Assume the last link in the joint model group is the tip
-    const moveit::core::LinkModel *tip_link = joint_model_group_->getLinkModels().back(); 
+    const moveit::core::LinkModel *tip_link = joint_model_group_->getLinkModels().back();
 
-    ros::Duration(1).sleep();
-    std::cout << std::endl;
-    std::cout << std::endl;
-    std::cout << std::endl;
-    std::cout << "after link model " << std::endl;
+    for (std::size_t j = 0; j < paths.size(); ++j)
+    {
+      std::cout << "Processing PATH " << j << " ---------------------------" << std::endl;
 
+      // Each state in the path
+      for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
+      {
+        std::cout << "Printing state " << i << std::endl;
+
+        if (!paths[j]->getVertex(i).getState())
+          ROS_ERROR_STREAM_NAMED("temp","no state found");
+        else
+          std::cout << "State:" << paths[j]->getVertex(i).getState() << std::endl;
+
+        if (!mbp_context->getOMPLStateSpace())  // const ModelBasedStateSpacePtr
+          ROS_ERROR_STREAM_NAMED("temp","no state space!");
+        else
+        {
+          mbp_context->getOMPLStateSpace()->printSettings(std::cout);
+          std::cout << "Joint model group name: "<< mbp_context->getOMPLStateSpace()->getJointModelGroupName()  << std::endl;
+          std::cout << "dimension: " << mbp_context->getOMPLStateSpace()->getDimension() << std::endl;
+        }
+
+        mbp_context->getOMPLStateSpace()->printState( paths[j]->getVertex(i).getState(), std::cout);
+        /*
+          mbp_context->getOMPLStateSpace()->copyToRobotState( *robot_state_, paths[j]->getVertex(i).getState() );
+          visual_tools_->publishRobotState(robot_state_);
+
+          Eigen::Affine3d pose;
+          pose = robot_state_->getGlobalLinkTransform(tip_link);
+          // Debug pose
+          std::cout << "Pose: " << i << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
+          //visual_tools_->publishSphere(pose, moveit_visual_tools::WHITE, moveit_visual_tools::LARGE);
+
+          ros::Duration(2).sleep();
+        */
+      }
+    }
+
+
+
+
+    /*
     // Show all paths
     for (std::size_t i = 0; i < 1; ++i) //paths.size(); ++i)
     {
-        std::cout << "publish path " << i << std::endl;
-        ompl_viewer_->publishRobotPath( mbp_context, tip_link, paths[i], moveit_visual_tools::RAND );
-        std::cout << "done publish path " << std::endl;
+    std::cout << "publish path " << i << std::endl;
+    ompl_viewer_->publishRobotPath( mbp_context, tip_link, paths[i], moveit_visual_tools::RAND );
+    std::cout << "done publish path " << std::endl;
 
     }
+    */
 
     // TODO testing
     //context->terminate();
