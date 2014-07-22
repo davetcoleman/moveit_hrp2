@@ -322,6 +322,7 @@ public:
   }
 
   // Plan with MoveIt + Lightning for different arm positions
+  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=3 group:=left_arm
   void genLightningPlans()
   {
     robot_state_->setToDefaultValues();
@@ -355,23 +356,46 @@ public:
     req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
     req.allowed_planning_time = 30;
 
-    // temp
-    planning_interface::MotionPlanRequest req_backup = req;
-
     // Call pipeline
     loadPlanningPipeline(); // always call first
     std::vector<std::size_t> dummy;
+
+
+
     planning_interface::PlanningContextPtr planning_context_handle;
+    std::cout << "Planning context handle address " << planning_context_handle << std::endl;
     planning_pipeline_->generatePlan(planning_scene_, req, res, dummy, planning_context_handle);
+    std::cout << "Planning context handle address " << planning_context_handle << std::endl;
+
+
+    ompl_interface::ModelBasedPlanningContextPtr mbpc;
+    std::cout << "Model based planning context address if  " << mbpc << std::endl;
+    mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
+    std::cout << "Model based planning context address if  " << mbpc << std::endl;
+
+    
+    std::cout << "OMPL State Space address " << mbpc->getOMPLStateSpace() << std::endl;
+    mbpc->getOMPLStateSpace()->printSettings(std::cout);
+
+
+    boost::shared_ptr<ompl_interface::JointModelStateSpace> jmss;
+    std::cout << "JointModelStateSpacePtr address is " << jmss << std::endl;
+    jmss = boost::dynamic_pointer_cast<ompl_interface::JointModelStateSpace>(mbpc->getOMPLStateSpace());
+    std::cout << "JointModelStateSpacePtr address is " << jmss << std::endl;
+
+
+    jmss->printSettings(std::cout);
+
+
 
     //std::cout << "File path from long line is: " <<
     //  boost::static_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle)->getOMPLLightning().getFilePath() << std::endl;
 
-
+    /*
     // Check that the planning was successful
     if(res.error_code_.val != res.error_code_.SUCCESS)
     {
-      ROS_ERROR("Could not compute plan successfully =======================================================");
+      ROS_ERROR("Could not compute plan successfully 11=======================================================");
       ROS_INFO_STREAM_NAMED("temp","Attempting to visualize trajectory anyway...");
     }
 
@@ -402,11 +426,25 @@ public:
     ROS_INFO_STREAM_NAMED("temp","Done processing offline");
 
 
-    boost::shared_ptr<ompl_interface::JointModelStateSpace> jmss =
-      boost::dynamic_pointer_cast<ompl_interface::JointModelStateSpace>(mbpc->getOMPLStateSpace());
+
+
+    // Show all experience
+
+    boost::shared_ptr<ompl_interface::JointModelStateSpace> jmss;
+    std::cout << "JointModelStateSpacePtr address is " << jmss << std::endl;
+    jmss = boost::dynamic_pointer_cast<ompl_interface::JointModelStateSpace>(mbpc->getOMPLStateSpace());
+    std::cout << "JointModelStateSpacePtr address is " << jmss << std::endl;
+
+
     jmss->printSettings(std::cout);
 
 
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    exit(0);
     // Now display path
     // Display all of the saved paths
     std::vector<ompl::base::PlannerDataPtr> paths;
@@ -426,15 +464,31 @@ public:
       for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
         path.append(paths[j]->getVertex(i).getState());
 
-      robot_trajectory::RobotTrajectory traj(robot_model_, planning_group_name_);
-      mbpc->convertPath(path, traj);
-      visual_tools_->publishTrajectoryPath(traj, true);
+      robot_trajectory::RobotTrajectory robot_trajectory(robot_model_, planning_group_name_);
 
-      ROS_WARN_STREAM_NAMED("temp","sleeping 1");
-      ros::Duration(1.0).sleep();
+      // Convert to trajectory
+      mbpc->convertPath(path, robot_trajectory);
+      visual_tools_->publishTrajectoryPath(robot_trajectory, true);
 
-      //void ompl_interface::ModelBasedPlanningContext::convertPath(const ompl::geometric::PathGeometric &pg, robot_trajectory::RobotTrajectory &traj) const
+      // Visualize as line
+      for (std::size_t i = 0; i < robot_trajectory.getWayPointCount(); ++i)
+      {
+        Eigen::Affine3d pose;
+        robot_trajectory.getWayPointPtr(i)->update(); // prevent dirty transforms
+        robot_trajectory.getWayPointPtr(i)->getGlobalLinkTransform(tip_link);
 
+        // Debug pose
+        std::cout << "Pose: " << i << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
+      }
+
+
+
+
+      ROS_WARN_STREAM_NAMED("temp","sleeping before next path");
+      ros::Duration(4.0).sleep();
+
+
+      */
       /*
       // Each state in the path
       for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
@@ -473,12 +527,8 @@ public:
 
       */
 
-    } // each path
+    //    } // each path
     
-
-
-
-
   }
 
   bool setRandomValidState(robot_state::RobotStatePtr &state, const robot_model::JointModelGroup* jmg)
@@ -696,6 +746,7 @@ public:
 
     //const ompl_interface::ModelBasedStateSpacePtr model_state_space = mbp_context->getOMPLStateSpace();
     //std::cout << "Dimension: " << model_state_space->getDimension() << std::endl;
+
 
     // Display all of the saved paths
     std::vector<ompl::base::PlannerDataPtr> paths;
