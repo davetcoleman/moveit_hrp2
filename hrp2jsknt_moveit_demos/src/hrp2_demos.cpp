@@ -434,20 +434,30 @@ public:
 
     ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths: " << paths.size());
 
+    // Get tip links for this setup
+    std::vector<const robot_model::LinkModel*> tips;
+    getEndEffectorTips(tips, joint_model_group_);
+    std::cout << "Found " << tips.size() << " tips" << std::endl;
+
     // Assume the last link in the joint model group is the tip
-    const moveit::core::LinkModel *tip_link = joint_model_group_->getLinkModels().back(); 
+    const moveit::core::LinkModel *tip_link = joint_model_group_->getLinkModels().back();
 
     bool show_trajectory_animated = verbose;
 
     Eigen::Affine3d pose;
-    std::vector<geometry_msgs::Point> path_msg;
+    std::vector< std::vector<geometry_msgs::Point> > paths_msgs(tips.size()); // each tip has its own path of points
     robot_trajectory::RobotTrajectoryPtr robot_trajectory;
 
-    for (std::size_t j = 0; j < paths.size(); ++j)
+    for (std::size_t path_id = 0; path_id < paths.size(); ++path_id)
     {
-      std::cout << "Processing path " << j << std::endl;
-      path_msg.clear();
-      
+      std::cout << "Processing path " << path_id << std::endl;
+
+      // Clear each tip's individual tip out
+      for (std::size_t tip_id = 0; tip_id < tips.size(); ++tip_id)
+      {
+        paths_msgs[tip_id].clear();
+      }
+
       // Optionally save the trajectory
       if (show_trajectory_animated)
       {
@@ -455,35 +465,49 @@ public:
       }
 
       // Each state in the path
-      for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
+      for (std::size_t state_id = 0; state_id < paths[path_id]->numVertices(); ++state_id)
       {
+        // Check if program is shutting down
+        if (!ros::ok())
+          return;
+
         // Convert to robot state
-        model_state_space->copyToRobotState( *robot_state_, paths[j]->getVertex(i).getState() );      
+        model_state_space->copyToRobotState( *robot_state_, paths[path_id]->getVertex(state_id).getState() );
 
-        // Forward dynamics
-        pose = robot_state_->getGlobalLinkTransform(tip_link);
-
-        // Optionally save the trajectory
-        if (show_trajectory_animated)
+        // Each tip in the robot state
+        for (std::size_t tip_id = 0; tip_id < tips.size(); ++tip_id)
         {
-          robot_state::RobotState robot_state_copy = *robot_state_;
-          robot_trajectory->addSuffixWayPoint(robot_state_copy, 1.0); // 1 second interval
-        }
 
-        // Debug pose
-        //std::cout << "Pose: " << i << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
+          // Forward dynamics
+          pose = robot_state_->getGlobalLinkTransform(tips[tip_id]);
 
-        path_msg.push_back( visual_tools_->convertPose(pose).position );
-        
-        // Show goal state arrow
-        if (i == paths[j]->numVertices() -1)
-        {
-          visual_tools_->publishArrow( pose, moveit_visual_tools::BLACK ); 
-        }
+          // Optionally save the trajectory
+          if (show_trajectory_animated)
+          {
+            robot_state::RobotState robot_state_copy = *robot_state_;
+            robot_trajectory->addSuffixWayPoint(robot_state_copy, 0.05); // 1 second interval
+          }
+
+          // Debug pose
+          //std::cout << "Pose: " << state_id << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
+
+          paths_msgs[tip_id].push_back( visual_tools_->convertPose(pose).position );
+
+          // Show goal state arrow
+          if (state_id == paths[path_id]->numVertices() -1)
+          {
+            visual_tools_->publishArrow( pose, moveit_visual_tools::BLACK );
+          }
+        }       
       }
 
-      visual_tools_->publishPath( path_msg, moveit_visual_tools::RAND, moveit_visual_tools::SMALL );
-      visual_tools_->publishSpheres( path_msg, moveit_visual_tools::BLUE, moveit_visual_tools::SMALL );
+      for (std::size_t tip_id = 0; tip_id < tips.size(); ++tip_id)
+      {
+        visual_tools_->publishPath( paths_msgs[tip_id], moveit_visual_tools::RAND, moveit_visual_tools::SMALL );
+        ros::Duration(0.05).sleep();
+        visual_tools_->publishSpheres( paths_msgs[tip_id], moveit_visual_tools::BLUE, moveit_visual_tools::SMALL );
+        ros::Duration(0.05).sleep();
+      }
 
       // Debugging - Convert to trajectory
       if (show_trajectory_animated)
@@ -809,15 +833,24 @@ public:
     exit(-1);
   }
 
-  bool genIKRequests(int problems, std::size_t seed)
+  bool getEndEffectorTips(std::vector<std::string> &tips, const robot_model::JointModelGroup* joint_model_group)
   {
-    // Get the starting pose that corresponds to selected planning group
-    std::string start_pose = getStartPose(planning_group_name_);
-    const robot_model::JointModelGroup* joint_model_group = joint_model_group_;
+    // Get a vector of tip links
+    std::vector<const robot_model::LinkModel*> tip_links;
+    if (!getEndEffectorTips(tip_links, joint_model_group))
+      return false;
 
-    // Get tip links for this setup -----------------------------------------------
-    std::vector<std::string> tips;
+    // Convert to string names
+    tips.clear();
+    for (std::size_t i = 0; i < tip_links.size(); ++i)
+    {
+      tips.push_back(tip_links[i]->getName());
+    }
+    return true;
+  }
 
+  bool getEndEffectorTips(std::vector<const robot_model::LinkModel*> &tips, const robot_model::JointModelGroup* joint_model_group)
+  {
     for (std::size_t i = 0; i < joint_model_group->getAttachedEndEffectorNames().size(); ++i)
     {
       const robot_model::JointModelGroup *eef = robot_model_->getEndEffector(joint_model_group->getAttachedEndEffectorNames()[i]);
@@ -828,8 +861,22 @@ public:
       }
       const std::string &eef_parent = eef->getEndEffectorParentGroup().second;
 
-      tips.push_back(eef_parent);
+      const robot_model::LinkModel* eef_link = robot_model_->getLinkModel(eef_parent);
+      if (!eef_link)
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Unable to find end effector link for eef");
+        return false;
+      }
+
+      tips.push_back(eef_link);
     }
+    return true;
+  }
+
+  bool genIKRequests(int problems, std::size_t seed)
+  {
+    // Get the starting pose that corresponds to selected planning group
+    std::string start_pose = getStartPose(planning_group_name_);
 
     // Random number generator -----------------------------------------------------
     random_numbers::RandomNumberGenerator *rng;
@@ -845,6 +892,13 @@ public:
       rng = new random_numbers::RandomNumberGenerator(seed);
     }
 
+    // Get tip links for this setup
+    std::vector<const robot_model::LinkModel*> tips;
+    getEndEffectorTips(tips, joint_model_group_);
+
+    std::vector<std::string> tip_names;
+    getEndEffectorTips(tip_names, joint_model_group_);
+
     // Choose random end effector goal positions for left and right arm ------------------
 
     // Skip x number random numbers (for debugging)
@@ -853,7 +907,7 @@ public:
     for (std::size_t i = 0; i < skip_rands; ++i)
     {
       ROS_WARN_STREAM_NAMED("temp","Skipping position " << i);
-      robot_state_->setToRandomPositions(joint_model_group, *rng);
+      robot_state_->setToRandomPositions(joint_model_group_, *rng);
     }
 
     for (std::size_t problem_id = skip_rands; problem_id < problems; ++problem_id)
@@ -865,7 +919,7 @@ public:
       goal_state_->setToDefaultValues();
 
       // Stochastically random goal positions
-      robot_state_->setToRandomPositions(joint_model_group, *rng);
+      robot_state_->setToRandomPositions(joint_model_group_, *rng);
 
       // hack to skip run 2 that is bad
       if (problem_id == 1 && false)
@@ -875,21 +929,21 @@ public:
       }
 
       // Set the seed value from SRDF
-      setStateToGroupPose(goal_state_, start_pose, joint_model_group);
+      setStateToGroupPose(goal_state_, start_pose, joint_model_group_);
 
       // Check that the new state is valid
       robot_state_->enforceBounds();
-      if (!robot_state_->satisfiesBounds(joint_model_group))
+      if (!robot_state_->satisfiesBounds(joint_model_group_))
       {
-        ROS_ERROR_STREAM_NAMED("setGroupToValue","New joint values do not satisfy bounds for group " << joint_model_group->getName());
+        ROS_ERROR_STREAM_NAMED("setGroupToValue","New joint values do not satisfy bounds for group " << joint_model_group_->getName());
         exit(-1);
       }
 
       // Debug seed joint values:
       if (true)
       {
-        std::vector<double> joints(joint_model_group->getVariableCount());
-        robot_state_->copyJointGroupPositions(joint_model_group, joints);
+        std::vector<double> joints(joint_model_group_->getVariableCount());
+        robot_state_->copyJointGroupPositions(joint_model_group_, joints);
 
         if (true)
         {
@@ -904,11 +958,11 @@ public:
         double epsilon = 0.05;
         for (std::size_t j = 0; j < joints.size(); ++j)
         {
-          if (joints[j] < joint_model_group->getJointModels()[j]->getVariableBounds()[0].min_position_ + epsilon)
-            std::cout << " LOW " << joint_model_group->getJointModels()[j]->getVariableBounds()[0].min_position_ << std::endl;
+          if (joints[j] < joint_model_group_->getJointModels()[j]->getVariableBounds()[0].min_position_ + epsilon)
+            std::cout << " LOW " << joint_model_group_->getJointModels()[j]->getVariableBounds()[0].min_position_ << std::endl;
 
-          if (joints[j] > joint_model_group->getJointModels()[j]->getVariableBounds()[0].max_position_ - epsilon)
-            std::cout << " HIGH " << joint_model_group->getJointModels()[j]->getVariableBounds()[0].max_position_ << std::endl;
+          if (joints[j] > joint_model_group_->getJointModels()[j]->getVariableBounds()[0].max_position_ - epsilon)
+            std::cout << " HIGH " << joint_model_group_->getJointModels()[j]->getVariableBounds()[0].max_position_ << std::endl;
         }
       }
 
@@ -927,7 +981,7 @@ public:
       double timeout = 0; // unset
 
       // IK Solver
-      if (!goal_state_->setFromIK(joint_model_group, poses, tips, attempts, timeout))
+      if (!goal_state_->setFromIK(joint_model_group_, poses, tip_names, attempts, timeout))
       {
         ROS_ERROR_STREAM_NAMED("demos","setFromIK failed");
         return false;
@@ -945,7 +999,7 @@ public:
       {
         if (!poseIsSimilar(poses[i], poses_new[i]))
         {
-          ROS_ERROR_STREAM_NAMED("temp","Pose not similar: " << tips[i]);
+          ROS_ERROR_STREAM_NAMED("temp","Pose not similar: " << tips[i]->getName());
           passed = false;
         }
       }
