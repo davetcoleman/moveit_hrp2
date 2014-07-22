@@ -17,6 +17,7 @@
   <arg name="verbose" default="0" />
   <arg name="group" default="whole_body" />
 
+
   <!-- Planning Functionality -->
   <include ns="hrp2jsknt_moveit_demos" file="$(find hrp2jsknt_moveit_config)/launch/planning_pipeline.launch.xml">
     <arg name="pipeline" value="ompl" />

@@ -53,6 +53,7 @@
 // OMPL
 #include <moveit/ompl_interface/model_based_planning_context.h>
 #include <moveit/ompl_interface/parameterization/joint_space/joint_model_state_space.h>
+#include <moveit/ompl_interface/parameterization/joint_space/joint_model_state_space_factory.h>
 #include <ompl/tools/lightning/Lightning.h>
 #include <ompl_rviz_viewer/ompl_rviz_viewer.h>
 
@@ -77,7 +78,7 @@ namespace hrp2jsknt_moveit_demos
 
 static const std::string ROBOT_DESCRIPTION = "robot_description";
 static const std::string MARKER_TOPIC = "/hrp2_visual_markers";
-static const std::string BASE_LINK = "/odom"; 
+static const std::string BASE_LINK = "/odom";
 
 class HRP2Demos
 {
@@ -108,6 +109,7 @@ public:
     visual_tools_.reset(new moveit_visual_tools::VisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
     visual_tools_->loadRobotStatePub("/hrp2_demos");
     visual_tools_->loadMarkerPub();
+    visual_tools_->loadTrajectoryPub();
     visual_tools_->deleteAllMarkers(); // clear all old markers
 
     // Used for clearing out robot state
@@ -375,11 +377,11 @@ public:
 
 
     ompl_interface::ModelBasedPlanningContextPtr mbpc;
-    std::cout << "Model based planning context address if  " << mbpc << std::endl; 
+    std::cout << "Model based planning context address if  " << mbpc << std::endl;
     mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
     std::cout << "Model based planning context address if  " << mbpc << std::endl;
 
-    
+
     std::cout << "OMPL State Space address " << mbpc->getOMPLStateSpace() << std::endl;
     mbpc->getOMPLStateSpace()->printSettings(std::cout);
 
@@ -461,8 +463,6 @@ public:
         //visual_tools_->publishSphere(pose, moveit_visual_tools::WHITE, moveit_visual_tools::LARGE);
       }
 
-      visual_tools_->publishPath( path_msg, moveit_visual_tools::RAND );
-      visual_tools_->publishSpheres( path_msg );
 
 
       ROS_WARN_STREAM_NAMED("temp","sleeping before next path");
@@ -472,47 +472,124 @@ public:
       // Each state in the path
       for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
       {
-        std::cout << "Printing state " << i << std::endl;
+      std::cout << "Printing state " << i << std::endl;
 
-        if (!paths[j]->getVertex(i).getState())
-          ROS_ERROR_STREAM_NAMED("temp","no state found");
-        else
-          std::cout << "State:" << paths[j]->getVertex(i).getState() << std::endl;
+      if (!paths[j]->getVertex(i).getState())
+      ROS_ERROR_STREAM_NAMED("temp","no state found");
+      else
+      std::cout << "State:" << paths[j]->getVertex(i).getState() << std::endl;
 
-        if (!mbpc->getOMPLStateSpace())  // const ModelBasedStateSpacePtr
-          ROS_ERROR_STREAM_NAMED("temp","no state space!");
-        else
-        {
-          mbpc->getOMPLStateSpace()->printSettings(std::cout);
-          std::cout << "Joint model group name: "<< mbpc->getOMPLStateSpace()->getJointModelGroupName()  << std::endl;
-          //std::cout << "dimension: " << mbpc->getOMPLStateSpace()->getDimension() << std::endl;
-        }
+      if (!mbpc->getOMPLStateSpace())  // const ModelBasedStateSpacePtr
+      ROS_ERROR_STREAM_NAMED("temp","no state space!");
+      else
+      {
+      mbpc->getOMPLStateSpace()->printSettings(std::cout);
+      std::cout << "Joint model group name: "<< mbpc->getOMPLStateSpace()->getJointModelGroupName()  << std::endl;
+      //std::cout << "dimension: " << mbpc->getOMPLStateSpace()->getDimension() << std::endl;
+      }
 
-        // NOTE THIS IS JMSS
-        jmss->printState( paths[j]->getVertex(i).getState(), std::cout);
+      // NOTE THIS IS JMSS
+      jmss->printState( paths[j]->getVertex(i).getState(), std::cout);
 
-        jmss->copyToRobotState( *robot_state_, paths[j]->getVertex(i).getState() );
-        visual_tools_->publishRobotState(robot_state_);
+      jmss->copyToRobotState( *robot_state_, paths[j]->getVertex(i).getState() );
+      visual_tools_->publishRobotState(robot_state_);
 
-        Eigen::Affine3d pose;
-        pose = robot_state_->getGlobalLinkTransform(tip_link);
-        // Debug pose
-        std::cout << "Pose: " << i << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
-        //visual_tools_->publishSphere(pose, moveit_visual_tools::WHITE, moveit_visual_tools::LARGE);
+      Eigen::Affine3d pose;
+      pose = robot_state_->getGlobalLinkTransform(tip_link);
+      // Debug pose
+      std::cout << "Pose: " << i << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
+      //visual_tools_->publishSphere(pose, moveit_visual_tools::WHITE, moveit_visual_tools::LARGE);
 
-        ros::Duration(1).sleep();
+      ros::Duration(1).sleep();
 
       }
 
       */
 
     } // for each path
-    
+
   }
 
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=6 group:=left_arm
-  void displayLightningPlans()
+  void displayLightningPlans(bool verbose)
   {
+    // Create a state space describing our robot's planning group
+    ompl_interface::ModelBasedStateSpaceSpecification model_ss_spec(robot_model_, joint_model_group_);
+    const ompl_interface::JointModelStateSpaceFactory factory;
+    ompl_interface::ModelBasedStateSpacePtr model_state_space = factory.getNewStateSpace(model_ss_spec);
+
+    // Setup the state space
+    model_state_space->setup();
+    //model_state_space->printSettings(std::cout);
+
+    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Model Based State Space has dimensions: " << model_state_space->getDimension());
+
+    // Load lightning and its database
+    ompl::tools::Lightning lightning(model_state_space);
+    lightning.load(joint_model_group_->getName());
+
+    // Get all of the paths in the database
+    std::vector<ompl::base::PlannerDataPtr> paths;
+    lightning.getAllPaths(paths);
+
+    ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths: " << paths.size());
+
+    // Assume the last link in the joint model group is the tip
+    const moveit::core::LinkModel *tip_link = joint_model_group_->getLinkModels().back(); 
+
+    bool show_trajectory_animated = verbose;
+
+    Eigen::Affine3d pose;
+    for (std::size_t j = 0; j < paths.size(); ++j)
+    {
+      std::cout << std::endl;
+      std::cout << "Processing PATH " << j << " -------------------------------------------------------------------------" << std::endl;
+
+      std::vector<geometry_msgs::Point> path_msg;
+      robot_trajectory::RobotTrajectoryPtr robot_trajectory;
+      
+      // Optionally save the trajectory
+      if (show_trajectory_animated)
+      {
+        robot_trajectory.reset(new robot_trajectory::RobotTrajectory(robot_model_, planning_group_name_));
+      }
+
+      // Each state in the path
+      for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
+      {
+        model_state_space->copyToRobotState( *robot_state_, paths[j]->getVertex(i).getState() );      
+        //visual_tools_->publishRobotState(robot_state_);
+
+        pose = robot_state_->getGlobalLinkTransform(tip_link);
+
+        // Optionally save the trajectory
+        if (show_trajectory_animated)
+        {
+          robot_state::RobotState robot_state_copy = *robot_state_;
+          robot_trajectory->addSuffixWayPoint(robot_state_copy, 1.0); // 1 second interval
+        }
+
+        // Debug pose
+        //std::cout << "Pose: " << i << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
+
+        path_msg.push_back( visual_tools_->convertPose(pose).position );
+      }
+
+      visual_tools_->publishPath( path_msg, moveit_visual_tools::RAND );
+      visual_tools_->publishSpheres( path_msg );
+
+      // Debugging - Convert to trajectory
+      if (show_trajectory_animated)
+      {
+        visual_tools_->publishTrajectoryPath(*robot_trajectory, true);
+      }
+
+    } // for each path
+
+
+
+
+    /*
     // use planning pipeline to load many of our components
     loadPlanningPipeline(); // always call first
     const planning_interface::PlannerManagerPtr& pm = planning_pipeline_->getPlannerManager();
@@ -559,61 +636,65 @@ public:
     // Assume the last link in the joint model group is the tip
     const moveit::core::LinkModel *tip_link = joint_model_group_->getLinkModels().back();
 
+    Eigen::Affine3d pose;
     for (std::size_t j = 0; j < paths.size(); ++j)
     {
       std::cout << "Processing PATH " << j << " -------------------------------------------------------------------------" << std::endl;
 
+      std::vector<geometry_msgs::Point> path_msg;
+
       // Each state in the path
       for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
       {
-        std::cout << "Printing state " << i << std::endl;
+        /*
+          std::cout << "Printing state " << i << std::endl;
 
-        if (!paths[j]->getVertex(i).getState())
+          if (!paths[j]->getVertex(i).getState())
           ROS_ERROR_STREAM_NAMED("temp","no state found");
-        else
+          else
           std::cout << "State:" << paths[j]->getVertex(i).getState() << std::endl;
 
-        if (!mbp_context->getOMPLStateSpace())  // const ModelBasedStateSpacePtr
+          if (!mbp_context->getOMPLStateSpace())  // const ModelBasedStateSpacePtr
           ROS_ERROR_STREAM_NAMED("temp","no state space!");
-        else
-        {
+          else
+          {
           mbp_context->getOMPLStateSpace()->printSettings(std::cout);
           std::cout << "Joint model group name: "<< mbp_context->getOMPLStateSpace()->getJointModelGroupName()  << std::endl;
           std::cout << "dimension: " << mbp_context->getOMPLStateSpace()->getDimension() << std::endl;
-        }
+          }
 
-        mbp_context->getOMPLStateSpace()->printState( paths[j]->getVertex(i).getState(), std::cout);
+          mbp_context->getOMPLStateSpace()->printState( paths[j]->getVertex(i).getState(), std::cout);
+        *   /
 
         mbp_context->getOMPLStateSpace()->copyToRobotState( *robot_state_, paths[j]->getVertex(i).getState() );
-        visual_tools_->publishRobotState(robot_state_);
+        //visual_tools_->publishRobotState(robot_state_);
 
-        Eigen::Affine3d pose;
         pose = robot_state_->getGlobalLinkTransform(tip_link);
+
         // Debug pose
         std::cout << "Pose: " << i << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
-        visual_tools_->publishSphere(pose, moveit_visual_tools::WHITE, moveit_visual_tools::LARGE);
-
-        ros::Duration(2).sleep();
-
+        path_msg.push_back( visual_tools_->convertPose(pose).position );
       }
-    }
 
 
+      visual_tools_->publishPath( path_msg, moveit_visual_tools::RAND );
+      visual_tools_->publishSpheres( path_msg );
 
+      // Debugging - Convert to trajectory
+      {
+        robot_trajectory::RobotTrajectory robot_trajectory(robot_model_, planning_group_name_);
+        og::PathGeometric path(lightning.getSpaceInformation());
 
-    /*
-    // Show all paths
-    for (std::size_t i = 0; i < 1; ++i) //paths.size(); ++i)
-    {
-    std::cout << "publish path " << i << std::endl;
-    ompl_viewer_->publishRobotPath( mbp_context, tip_link, paths[i], moveit_visual_tools::RAND );
-    std::cout << "done publish path " << std::endl;
+        // Convert the planner data verticies into a vector of states
+        for (std::size_t i = 0; i < paths[j]->numVertices(); ++i)
+          path.append(paths[j]->getVertex(i).getState());
 
-    }
+        mbp_context->convertPath(path, robot_trajectory);
+        visual_tools_->publishTrajectoryPath(robot_trajectory, true);
+      }
+
+    } // for each path
     */
-
-    // TODO testing
-    //context->terminate();
   }
 
   bool setRandomValidState(robot_state::RobotStatePtr &state, const robot_model::JointModelGroup* jmg)
@@ -1480,6 +1561,7 @@ int main(int argc, char **argv)
   int mode = 1;
   int runs = 1; // how many times to run the same problem
   int problems = 1; // how many problems to solve
+  bool verbose = false;
   std::string planning_group_name = "whole_body";
   std::size_t seed = 0;
 
@@ -1490,6 +1572,12 @@ int main(int argc, char **argv)
       ++i;
       mode = atoi(argv[i]);
       ROS_INFO_STREAM_NAMED("main","In mode " << mode);
+    }
+
+    if( std::string(argv[i]).compare("--verbose") == 0 )
+    {
+      verbose = true;
+      ROS_INFO_STREAM_NAMED("main","Verbose is true");
     }
 
     if( std::string(argv[i]).compare("--runs") == 0 )
@@ -1553,7 +1641,7 @@ int main(int argc, char **argv)
           break;
         case 6:
           ROS_INFO_STREAM_NAMED("demos","6 - Show the experience database visually in Rviz");
-          client.displayLightningPlans();
+          client.displayLightningPlans(verbose);
           break;
         case 7:
           ROS_INFO_STREAM_NAMED("demos","7 - Generate completely random poses of robot, then transform robot to foot on ground");
