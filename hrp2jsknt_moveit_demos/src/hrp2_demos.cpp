@@ -670,10 +670,10 @@ public:
 
     // Visualize request first
     visual_tools_->publishRobotState(robot_state_);
-    ros::Duration(0.5).sleep();
+    ros::Duration(2).sleep();
 
     visual_tools_->publishRobotState(goal_state_);
-    ros::Duration(0.5).sleep();
+    ros::Duration(2).sleep();
 
     hideRobot();
 
@@ -694,11 +694,15 @@ public:
       // Allow time to send trajectory
       sleep_time_.sleep();
     }
+    else
+    {
+      ROS_ERROR_STREAM_NAMED("temp","Failed to create plan crouch");
+    }
 
     ros::Duration(1.0).sleep();
   }
 
-  void genRandPoseGrounded()
+  void genRandPoseGroundedZ() // grounds just along the z axis
   {
     robot_state_->setToDefaultValues();
 
@@ -710,6 +714,7 @@ public:
 
     for (int counter=0; counter<10 && ros::ok(); counter++)
     {
+      // Move the virtual joint slightly
       setStateInPlace(robot_state_);
 
       // Reset
@@ -735,6 +740,73 @@ public:
       robot_state_->setJointPositions("virtual_joint", virtual_joint_transform);
 
       // Display result
+      visual_tools_->publishRobotState(robot_state_);
+      ros::Duration(2.0).sleep();
+
+      // let ROS send the message, then wait a while
+      loop_rate.sleep();
+    }
+  }
+
+  void genRandPoseGrounded()
+  {
+    robot_state_->setToDefaultValues();
+
+    // loop at 1 Hz
+    ros::Rate loop_rate(1);
+
+    const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
+
+    // Get default z offset of foot to world coordinate
+    //double z_default_foot_transform = robot_state_->getGlobalLinkTransform(foot).translation().z();
+    const Eigen::Affine3d default_foot_transform = robot_state_->getGlobalLinkTransform(foot);
+
+    // DEBUG
+    std::cout << "Default transform: " << std::endl;
+    robot_state_->printTransform(default_foot_transform, std::cout);
+
+    for (int counter=0; counter < 1 && ros::ok(); counter++)
+    {
+      // Reset
+      hideRobot();
+      ros::Duration(0.25).sleep();
+
+      // Move the virtual joint slightly
+      //setStateInPlace(robot_state_);
+
+      // Make random start state
+      if (!setRandomValidState(robot_state_, joint_model_group_))
+        return;      
+
+      //robot_state_->printStatePositions(std::cout);
+
+      // Show original random
+      visual_tools_->publishRobotState(robot_state_);
+      ros::Duration(1.0).sleep();
+
+      // DEBUG
+      ROS_WARN_STREAM_NAMED("temp","Virtual Joint Transform Before");
+      robot_state_->printTransform(robot_state_->getJointTransform("virtual_joint"), std::cout);
+
+
+      //robot_state_->printTransforms(std::cout);
+      ROS_DEBUG_STREAM_NAMED("temp","updating link");
+
+      // Move the virtual joint to a new location based on where we want the foot
+      robot_state_->updateStateWithLinkAt(foot, default_foot_transform, true);
+
+      
+      // DEBUG
+      ROS_DEBUG_STREAM_NAMED("temp","Printing state transforms from demo code after robot state UPDATE");
+      robot_state_->printStatePositions(std::cout);
+
+
+      // DEBUG
+      ROS_WARN_STREAM_NAMED("temp","Virtual Joint Transform After");
+      robot_state_->printTransform(robot_state_->getJointTransform("virtual_joint"), std::cout);
+
+      // Display result
+      //robot_state_->printStatePositions(std::cout);
       visual_tools_->publishRobotState(robot_state_);
       ros::Duration(2.0).sleep();
 
@@ -1359,8 +1431,6 @@ public:
     std::cout << "Z: " << positions[2] << std::endl;
   }
 
-
-
 private:
 
   ros::NodeHandle nh_;
@@ -1504,9 +1574,6 @@ int main(int argc, char **argv)
         case 8:
           ROS_INFO_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");
           client.genIKRequestsSweep(runs, problems, seed);
-          break;
-        case 9:
-          exit(0);
           break;
         case 0:
         default:

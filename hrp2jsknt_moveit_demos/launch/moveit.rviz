@@ -9,9 +9,6 @@ Panels:
         - /MotionPlanning1/Planning Request1
         - /MotionPlanning1/Planning Metrics1
         - /MotionPlanning1/Planned Path1
-        - /WholeBodyIK RobotState1
-        - /Marker1
-        - /HRP2 Demos Marker1
         - /HRP2 Demos Marker1/Namespaces1
       Splitter Ratio: 0.507622
     Tree Height: 975
@@ -332,7 +329,7 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
         Loop Animation: false
-        Robot Alpha: 0.5
+        Robot Alpha: 1
         Show Robot Collision: false
         Show Robot Visual: true
         Show Trail: false
@@ -659,7 +656,7 @@ Visualization Manager:
     - Attached Body Color: 150; 50; 150
       Class: moveit_rviz_plugin/RobotState
       Collision Enabled: false
-      Enabled: false
+      Enabled: true
       Links:
         All Links Enabled: true
         BODY:
@@ -943,7 +940,7 @@ Visualization Manager:
       Robot State Topic: /hrp2_demos
       Show All Links: true
       Show Highlights: true
-      Value: false
+      Value: true
       Visual Enabled: true
     - Attached Body Color: 150; 50; 150
       Class: moveit_rviz_plugin/RobotState
@@ -1247,7 +1244,17 @@ Visualization Manager:
       Marker Topic: /hrp2_visual_markers
       Name: HRP2 Demos Marker
       Namespaces:
+        Arrow: true
         Path: true
+        Spheres: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /hrp2jsknt_moveit_demos/display_contacts
+      Name: MoveIt Contact Points
+      Namespaces:
+        L_INDEXPIP_R_LINK=LLEG_LINK2: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -1265,22 +1272,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 2.9276
+      Distance: 2.84733
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.315719
-        Y: 0.0742674
-        Z: 1.66517e-07
+        X: 0.733976
+        Y: -0.292385
+        Z: 4.04936e-07
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: -0.00979165
+      Pitch: 0.385208
       Target Frame: BODY
       Value: XYOrbit (rviz)
-      Yaw: 6.25794
+      Yaw: 5.86793
     Saved: ~
 Window Geometry:
   Displays:
@@ -1292,7 +1299,7 @@ Window Geometry:
   Hide Right Dock: false
   Motion Planning:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000002a200000595fc0200000005fb000000100044006900730070006c006100790073010000004100000410000000dd00fffffffb0000000800480065006c00700000000342000000bb0000007600fffffffb0000000a0056006900650077007300000003b0000000b0000000b000fffffffb0000000c00430061006d00650072006100000002ff000001610000000000000000fb0000001e004d006f00740069006f006e00200050006c0061006e006e0069006e006701000004570000017f0000017400ffffff000002580000059500000001000000020000000100000002fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002a2000005bdfc0200000005fb000000100044006900730070006c006100790073010000001900000410000000dd00fffffffb0000000800480065006c00700000000342000000bb0000007600fffffffb0000000a0056006900650077007300000003b0000000b0000000b000fffffffb0000000c00430061006d00650072006100000002ff000001610000000000000000fb0000001e004d006f00740069006f006e00200050006c0061006e006e0069006e0067010000042f000001a70000017400ffffff00000258000005bd00000001000000020000000100000002fc0000000100000002000000010000000a0054006f006f006c00730000000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1280
