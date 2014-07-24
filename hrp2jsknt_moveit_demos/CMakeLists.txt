@@ -39,3 +39,7 @@ link_directories(${catkin_LIBRARY_DIRS})
 add_executable(hrp2_demos src/hrp2_demos.cpp)
 target_link_libraries(hrp2_demos ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 add_dependencies(hrp2_demos hrp2_moveit_msgs_gencpp ${PROJECT_NAME}_gencfg) # wait for external msgs to be built
+
+add_executable(random_poses_grounded src/random_poses_grounded.cpp)
+target_link_libraries(random_poses_grounded ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+add_dependencies(random_poses_grounded hrp2_moveit_msgs_gencpp ${PROJECT_NAME}_gencfg) # wait for external msgs to be built

@@ -83,7 +83,7 @@ static const std::string BASE_LINK = "/odom";
 class HRP2Demos
 {
 public:
-  HRP2Demos(int mode, const std::string planning_group_name)
+  HRP2Demos(const std::string planning_group_name)
     : nh_("~")
     , walking_service_name_("/generate_walking_service")
     , sleep_time_(0.5) // time to wait on ROS messages to clear
@@ -413,7 +413,7 @@ public:
   }
 
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=6 group:=left_arm verbose:=1
-  void displayLightningPlans(bool verbose)
+  void displayLightningPlans(int problems, bool verbose)
   {
     robot_state_->setToDefaultValues();
 
@@ -452,11 +452,12 @@ public:
     std::vector< std::vector<geometry_msgs::Point> > paths_msgs(tips.size()); // each tip has its own path of points
     robot_trajectory::RobotTrajectoryPtr robot_trajectory;
 
-    // The desired location of foot
+    // Enable the robot state to have a foot base
     const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
     const Eigen::Affine3d default_foot_transform = robot_state_->getGlobalLinkTransform(foot);
+    robot_state_->enableFakeBaseTransform(foot, default_foot_transform);
 
-    for (std::size_t path_id = 0; path_id < paths.size(); ++path_id)
+    for (std::size_t path_id = 0; path_id < std::min(int(paths.size()), problems); ++path_id)
     {
       std::cout << "Processing path " << path_id << std::endl;
 
@@ -481,9 +482,9 @@ public:
 
         // Convert to robot state
         model_state_space->copyToRobotState( *robot_state_, paths[path_id]->getVertex(state_id).getState() );
+        robot_state_->update(true); // force update so that the virtual joint is updated to the grounded foot
 
-        robot_state_->updateStateWithLinkAt(foot, default_foot_transform, true);
-        //robot_state_->update(true);
+        visual_tools_->publishRobotState(robot_state_);
 
         // Each tip in the robot state
         for (std::size_t tip_id = 0; tip_id < tips.size(); ++tip_id)
@@ -766,31 +767,33 @@ public:
     // loop at 1 Hz
     ros::Rate loop_rate(1);
 
+    // Enable the robot state to have a foot base
     const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
-
-    // The desired location of foot
     const Eigen::Affine3d default_foot_transform = robot_state_->getGlobalLinkTransform(foot);
+    robot_state_->enableFakeBaseTransform(foot, default_foot_transform);
 
     for (int counter=0; counter < problems && ros::ok(); counter++)
     {
+      if (!ros::ok())
+        return;
+      
       // Reset
-      hideRobot();
-      ros::Duration(0.25).sleep();
+      //hideRobot();
+      //ros::Duration(0.25).sleep();
 
       // Make random start state
       if (!setRandomValidState(robot_state_, joint_model_group_))
         return;      
 
       // Show original random
-      visual_tools_->publishRobotState(robot_state_);
-      ros::Duration(1.0).sleep();
+      //visual_tools_->publishRobotState(robot_state_);
+      //ros::Duration(1.0).sleep();
 
-      // Move the virtual joint to a new location based on where we want the foot
-      robot_state_->updateStateWithLinkAt(foot, default_foot_transform, true);
+      // force update so that the virtual joint is updated to the grounded foot
+      robot_state_->update(true);
 
       // Display result
       visual_tools_->publishRobotState(robot_state_);
-      ros::Duration(2.0).sleep();
 
       // let ROS send the message, then wait a while
       loop_rate.sleep();
@@ -1452,7 +1455,7 @@ private:
   bool walking_client_loaded_; // only load when we need it
 
   // The visual tools for interfacing with Rviz
-  ompl_rviz_viewer::OmplRvizViewerPtr ompl_viewer_;
+  //ompl_rviz_viewer::OmplRvizViewerPtr ompl_viewer_;
 
 }; // class
 
@@ -1524,7 +1527,7 @@ int main(int argc, char **argv)
     }
   }
 
-  hrp2jsknt_moveit_demos::HRP2Demos client(mode, planning_group_name);
+  hrp2jsknt_moveit_demos::HRP2Demos client(planning_group_name);
 
   while (ros::ok()) // continuously prompt user to do demos
   {
@@ -1548,7 +1551,7 @@ int main(int argc, char **argv)
           break;
         case 4:
           ROS_INFO_STREAM_NAMED("demos","6 - Show the experience database visually in Rviz");
-          client.displayLightningPlans(verbose);
+          client.displayLightningPlans(problems, verbose);
           break;
         case 5:
           ROS_INFO_STREAM_NAMED("demos","5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)");
