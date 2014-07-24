@@ -90,6 +90,7 @@ public:
     , walking_client_loaded_(false)
     , robot_model_loader_(ROBOT_DESCRIPTION) // load the URDF
     , planning_group_name_(planning_group_name)
+    , whole_body_group_name_("whole_body")
   {
     // Load the robot model
     robot_model_ = robot_model_loader_.getModel(); // Get a shared pointer to the robot
@@ -99,6 +100,7 @@ public:
 
     // Get the configuration for the joints in the group
     joint_model_group_ = robot_model_->getJointModelGroup(planning_group_name);
+    whole_body_group_ = robot_model_->getJointModelGroup(whole_body_group_name_);
 
     // Create robot states
     robot_state_.reset(new robot_state::RobotState(robot_model_));
@@ -413,6 +415,8 @@ public:
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=6 group:=left_arm verbose:=1
   void displayLightningPlans(bool verbose)
   {
+    robot_state_->setToDefaultValues();
+
     // Create a state space describing our robot's planning group
     ompl_interface::ModelBasedStateSpaceSpecification model_ss_spec(robot_model_, joint_model_group_);
     const ompl_interface::JointModelStateSpaceFactory factory;
@@ -448,6 +452,10 @@ public:
     std::vector< std::vector<geometry_msgs::Point> > paths_msgs(tips.size()); // each tip has its own path of points
     robot_trajectory::RobotTrajectoryPtr robot_trajectory;
 
+    // The desired location of foot
+    const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
+    const Eigen::Affine3d default_foot_transform = robot_state_->getGlobalLinkTransform(foot);
+
     for (std::size_t path_id = 0; path_id < paths.size(); ++path_id)
     {
       std::cout << "Processing path " << path_id << std::endl;
@@ -461,7 +469,7 @@ public:
       // Optionally save the trajectory
       if (show_trajectory_animated)
       {
-        robot_trajectory.reset(new robot_trajectory::RobotTrajectory(robot_model_, planning_group_name_));
+        robot_trajectory.reset(new robot_trajectory::RobotTrajectory(robot_model_, whole_body_group_name_));
       }
 
       // Each state in the path
@@ -474,11 +482,14 @@ public:
         // Convert to robot state
         model_state_space->copyToRobotState( *robot_state_, paths[path_id]->getVertex(state_id).getState() );
 
+        robot_state_->updateStateWithLinkAt(foot, default_foot_transform, true);
+        //robot_state_->update(true);
+
         // Each tip in the robot state
         for (std::size_t tip_id = 0; tip_id < tips.size(); ++tip_id)
         {
 
-          // Forward dynamics
+          // Forward kinematics
           pose = robot_state_->getGlobalLinkTransform(tips[tip_id]);
 
           // Optionally save the trajectory
@@ -748,7 +759,7 @@ public:
     }
   }
 
-  void genRandPoseGrounded()
+  void genRandPoseGrounded(int problems)
   {
     robot_state_->setToDefaultValues();
 
@@ -757,56 +768,27 @@ public:
 
     const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
 
-    // Get default z offset of foot to world coordinate
-    //double z_default_foot_transform = robot_state_->getGlobalLinkTransform(foot).translation().z();
+    // The desired location of foot
     const Eigen::Affine3d default_foot_transform = robot_state_->getGlobalLinkTransform(foot);
 
-    // DEBUG
-    std::cout << "Default transform: " << std::endl;
-    robot_state_->printTransform(default_foot_transform, std::cout);
-
-    for (int counter=0; counter < 1 && ros::ok(); counter++)
+    for (int counter=0; counter < problems && ros::ok(); counter++)
     {
       // Reset
       hideRobot();
       ros::Duration(0.25).sleep();
 
-      // Move the virtual joint slightly
-      //setStateInPlace(robot_state_);
-
       // Make random start state
       if (!setRandomValidState(robot_state_, joint_model_group_))
         return;      
-
-      //robot_state_->printStatePositions(std::cout);
 
       // Show original random
       visual_tools_->publishRobotState(robot_state_);
       ros::Duration(1.0).sleep();
 
-      // DEBUG
-      ROS_WARN_STREAM_NAMED("temp","Virtual Joint Transform Before");
-      robot_state_->printTransform(robot_state_->getJointTransform("virtual_joint"), std::cout);
-
-
-      //robot_state_->printTransforms(std::cout);
-      ROS_DEBUG_STREAM_NAMED("temp","updating link");
-
       // Move the virtual joint to a new location based on where we want the foot
       robot_state_->updateStateWithLinkAt(foot, default_foot_transform, true);
 
-      
-      // DEBUG
-      ROS_DEBUG_STREAM_NAMED("temp","Printing state transforms from demo code after robot state UPDATE");
-      robot_state_->printStatePositions(std::cout);
-
-
-      // DEBUG
-      ROS_WARN_STREAM_NAMED("temp","Virtual Joint Transform After");
-      robot_state_->printTransform(robot_state_->getJointTransform("virtual_joint"), std::cout);
-
       // Display result
-      //robot_state_->printStatePositions(std::cout);
       visual_tools_->publishRobotState(robot_state_);
       ros::Duration(2.0).sleep();
 
@@ -1426,9 +1408,15 @@ public:
   {
     ROS_INFO_STREAM_NAMED("temp","Virtual Joint Positions:");
     const double* positions = robot_state->getJointPositions("virtual_joint");
+    std::cout << "Position: " << std::endl;
     std::cout << "X: " << positions[0] << std::endl;
     std::cout << "Y: " << positions[1] << std::endl;
     std::cout << "Z: " << positions[2] << std::endl;
+    std::cout << "Quaternion: " << std::endl;
+    std::cout << "X: " << positions[3] << std::endl;
+    std::cout << "Y: " << positions[4] << std::endl;
+    std::cout << "Z: " << positions[5] << std::endl;
+    std::cout << "W: " << positions[6] << std::endl;
   }
 
 private:
@@ -1449,6 +1437,9 @@ private:
 
   robot_model::JointModelGroup* joint_model_group_; // selected by user
   std::string planning_group_name_; // allow to change planning group from command line
+
+  robot_model::JointModelGroup* whole_body_group_; // hard-coded
+  std::string whole_body_group_name_; // hard-coded group for the whole robot including virtual joint
 
   planning_scene::PlanningScenePtr planning_scene_;
   planning_pipeline::PlanningPipelinePtr planning_pipeline_;
@@ -1569,7 +1560,7 @@ int main(int argc, char **argv)
           break;
         case 7:
           ROS_INFO_STREAM_NAMED("demos","7 - Generate completely random poses of robot, then transform robot to foot on ground");
-          client.genRandPoseGrounded();
+          client.genRandPoseGrounded(problems);
           break;
         case 8:
           ROS_INFO_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");
