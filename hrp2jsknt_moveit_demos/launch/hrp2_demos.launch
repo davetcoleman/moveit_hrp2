@@ -8,7 +8,8 @@
   <!-- GDB Debug Option -->
   <arg name="debug" default="false" />
   <arg unless="$(arg debug)" name="launch_prefix" value="" />
-  <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
+  <arg     if="$(arg debug)" name="launch_prefix" 
+	   value="gdb -x $(find hrp2jsknt_moveit_demos)/launch/debug_settings.gdb --ex run --args" />
 
   <arg name="mode" default="1" />
   <arg name="seed" default="0" /> <!-- 0 means use system time -->
@@ -28,8 +29,8 @@
 	args="--mode $(arg mode) --seed $(arg seed) --runs $(arg runs) --problems $(arg problems) --verbose $(arg verbose) --group $(arg group)">
 
     <!-- DTC Testing -->
-    <param name="constraint_samplers" value=""/>
-    <!--param name="constraint_samplers" value="hrp2jsknt_moveit_constraint_sampler/HRP2JSKNTConstraintSamplerAllocator"/-->
+    <!--param name="constraint_samplers" value=""/-->
+    <param name="constraint_samplers" value="hrp2jsknt_moveit_constraint_sampler/HRP2JSKNTConstraintSamplerAllocator"/>
 
     <rosparam command="load" file="$(find hrp2jsknt_moveit_config)/config/kinematics.yaml"/>
   </node>

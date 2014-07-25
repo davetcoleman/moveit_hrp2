@@ -8,21 +8,25 @@ endif()
 find_package(Eigen REQUIRED)
 find_package(Boost REQUIRED thread)
 
-find_package(catkin COMPONENTS
+find_package(catkin REQUIRED COMPONENTS
   moveit_core
+  moveit_ros_planning
+  moveit_visual_tools
   moveit_msgs
   hrp2_moveit_msgs
   pluginlib
   roscpp
-  REQUIRED
 )
 
 catkin_package(
   LIBRARIES
   INCLUDE_DIRS
     hrp2jsknt_moveit_constraint_sampler/include/
-  DEPENDS
+  CATKIN_DEPENDS
     moveit_core
+    moveit_ros_planning
+    moveit_visual_tools
+    hrp2_moveit_msgs
 )
 
 include_directories(SYSTEM ${EIGEN_INCLUDE_DIRS} ${Boost_INCLUDE_DIR})

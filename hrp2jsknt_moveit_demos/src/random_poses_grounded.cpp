@@ -143,7 +143,8 @@ public:
     // Enable the robot state to have a foot base
     const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
     const Eigen::Affine3d default_foot_transform = robot_state_->getGlobalLinkTransform(foot);
-    robot_state_->enableFakeBaseTransform(foot, default_foot_transform);
+    const robot_model::JointModel* start_leg_joint = robot_model_->getJointModel("RLEG_JOINT0");
+    robot_state_->enableFakeBaseTransform(foot, start_leg_joint, default_foot_transform);
 
     for (int counter=0; counter < problems && ros::ok(); counter++)
     {

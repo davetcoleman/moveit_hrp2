@@ -61,6 +61,11 @@
 #include <moveit_msgs/PlanningScene.h>
 #include <moveit_msgs/PositionConstraint.h>
 
+// Constraint sampler
+//#include <hrp2jsknt_moveit_constraint_sampler/hrp2jsknt_constraint_sampler.h>
+#include <moveit/constraint_sampler_manager_loader/constraint_sampler_manager_loader.h>
+
+// Walking
 #include <hrp2_moveit_msgs/GetWalkingMotion.h>
 
 // Helper for Rviz
@@ -99,7 +104,7 @@ public:
     planning_scene_.reset(new planning_scene::PlanningScene(robot_model_));
 
     // Get the configuration for the joints in the group
-    joint_model_group_ = robot_model_->getJointModelGroup(planning_group_name);
+    joint_model_group_ = robot_model_->getJointModelGroup(planning_group_name_);
     whole_body_group_ = robot_model_->getJointModelGroup(whole_body_group_name_);
 
     // Create robot states
@@ -339,18 +344,31 @@ public:
 
   void genLightningPlans(bool verbose)
   {
-    robot_state_->setToDefaultValues();
-    goal_state_->setToDefaultValues();
+    // Show the lab as collision objects
+    //jskLabCollisionEnvironment();
+
+    // Move robot to specific place on plane
+    fixRobotStateFoot(robot_state_, 1.0, 0.5);
+    fixRobotStateFoot(goal_state_, 1.0, 0.5);
 
     // Make random goal state
     if (!setRandomValidState(goal_state_, joint_model_group_))
       return;
     // Make random start state
-    if (!setRandomValidState(robot_state_, joint_model_group_))
-      return;
+    //if (!setRandomValidState(robot_state_, joint_model_group_))
+    //  return;
+
+    robot_state_->update(true);
+    //goal_state_->update(true);
 
     // Visualize
-    //visual_tools_->publishRobotState(goal_state_);
+    visual_tools_->publishRobotState(robot_state_);
+    std::cout << "Visualizing robot state " << std::endl;
+    ros::Duration(2).sleep();
+
+    visual_tools_->publishRobotState(goal_state_);
+    std::cout << "Visualizing goal state " << std::endl;
+    ros::Duration(2).sleep();
 
     moveit_msgs::MotionPlanResponse response;
 
@@ -372,6 +390,7 @@ public:
     req.group_name = planning_group_name_;
     req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
     req.allowed_planning_time = 30;
+    req.use_experience = false;
 
     // Call pipeline
     loadPlanningPipeline(); // always call first
@@ -402,14 +421,18 @@ public:
     }
     else
     {
-      ROS_INFO_STREAM_NAMED("temp","Not visualizing because not in verbose mode");
+      ROS_WARN_STREAM_NAMED("temp","Not visualizing because not in verbose mode");
     }
 
     // Save the solutions to file
     //ROS_WARN_STREAM_NAMED("temp","Saving experience db...");
     ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
-    ompl::tools::Lightning lightning = mbpc->getOMPLLightning();
-    lightning.saveIfChanged();
+
+    if (req.use_experience)
+    {
+      ompl::tools::LightningPtr lightning = boost::dynamic_pointer_cast<ompl::tools::Lightning>(mbpc->getOMPLSimpleSetup());
+      lightning->saveIfChanged();
+    }
   }
 
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=6 group:=left_arm verbose:=1
@@ -453,9 +476,7 @@ public:
     robot_trajectory::RobotTrajectoryPtr robot_trajectory;
 
     // Enable the robot state to have a foot base
-    const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
-    const Eigen::Affine3d default_foot_transform = robot_state_->getGlobalLinkTransform(foot);
-    robot_state_->enableFakeBaseTransform(foot, default_foot_transform);
+    fixRobotStateFoot(robot_state_, 1, 1);
 
     for (std::size_t path_id = 0; path_id < std::min(int(paths.size()), problems); ++path_id)
     {
@@ -510,7 +531,7 @@ public:
           {
             visual_tools_->publishArrow( pose, moveit_visual_tools::BLACK );
           }
-        }       
+        }
       }
 
       for (std::size_t tip_id = 0; tip_id < tips.size(); ++tip_id)
@@ -534,18 +555,26 @@ public:
   bool setRandomValidState(robot_state::RobotStatePtr &state, const robot_model::JointModelGroup* jmg)
   {
     // Loop until a collision free state is found
-    static const int MAX_ATTEMPTS = 100;
+    static const int MAX_ATTEMPTS = 500;
+    static int total_calls = 0;
+    static int total_attempts = 0;
+    total_calls++;
+
     int attempt_count = 0; // prevent loop for going forever
     while (attempt_count < MAX_ATTEMPTS)
     {
-      // Generate random staten
+      // Generate random stat
       state->setToRandomPositions(jmg);
 
-      state->update(); // prevent dirty transforms
+      state->update(true); // prevent dirty transforms
 
       // Test for collision
       if (planning_scene_->isStateValid(*state, "", false))
+      {
+        total_attempts += attempt_count;
+        std::cout << "This sample took " << attempt_count << " with overall average " << (total_attempts / total_calls) << std::endl;
         break;
+      }
 
       attempt_count ++;
     }
@@ -760,40 +789,165 @@ public:
     }
   }
 
+  bool loadPlanningSceneMonitor()
+  {
+    // Allows us to sycronize to Rviz and also publish collision objects to ourselves
+    std::cout << std::endl;
+    std::cout << "------------------------------------------------------------------------- " << std::endl;
+    std::cout << "Loading Planning Scene Monitor " << std::endl;
+    planning_scene_monitor_.reset(new planning_scene_monitor::PlanningSceneMonitor(planning_scene_, ROBOT_DESCRIPTION,
+                                                                                   boost::shared_ptr<tf::Transformer>(), "hrp2_demos"));
+    ros::spinOnce();
+    ros::Duration(0.5).sleep();
+
+    if (planning_scene_monitor_->getPlanningScene())
+    {
+      // Optional monitors to start:
+      planning_scene_monitor_->startWorldGeometryMonitor();
+      //planning_scene_monitor_->startSceneMonitor("/move_group/monitored_planning_scene");
+      //planning_scene_monitor_->startStateMonitor("/joint_states", "/attached_collision_object");
+      planning_scene_monitor_->startPublishingPlanningScene(planning_scene_monitor::PlanningSceneMonitor::UPDATE_SCENE, "test_planning_scene");
+    }
+    else
+    {
+      ROS_ERROR_STREAM_NAMED("temp","Planning scene not configured");
+      return false;
+    }
+    std::cout << "------------------------------------------------------------------------- " << std::endl;
+    std::cout << std::endl;
+
+    return true;
+  }
+
+  void randomCollisionEnvironment()
+  {
+    // Move a wall
+    ROS_WARN_STREAM_NAMED("temp","publishing collision wall");
+
+
+    moveit_msgs::CollisionObject collision_obj;
+    visual_tools_->getCollisionWallMsg(visual_tools_->fRand(0.1, 1), // x
+                                       visual_tools_->fRand(0.1, 1), // y
+                                       0, // angle
+                                       2, // width
+                                       "wall1", // name
+                                       collision_obj);
+
+    planning_scene_->processCollisionObjectMsg(collision_obj);
+  }
+
+  void jskLabCollisionEnvironment()
+  {
+    // Load planning scene monitor so that we can publish a collision enviornment to rviz
+    if (!loadPlanningSceneMonitor())
+      return;
+
+    // Collision
+    ros::Duration(0.1).sleep();
+    {
+      planning_scene_monitor::LockedPlanningSceneRW ps(planning_scene_monitor_);
+      if (ps)
+      {
+        //static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2.scene";
+        static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2-without-floor.scene";
+
+        std::ifstream fin(path.c_str());
+        if (fin.good())
+        {
+          ps->loadGeometryFromStream(fin);
+          fin.close();
+          ROS_INFO("Loaded scene geometry from '%s'", path.c_str());
+        }
+        else
+          ROS_WARN("Unable to load scene geometry from '%s'", path.c_str());
+      }
+      else
+        ROS_WARN_STREAM_NAMED("temp","Unable to get locked planning scene RW");
+    }
+    planning_scene_monitor_->triggerSceneUpdateEvent(planning_scene_monitor::PlanningSceneMonitor::UPDATE_SCENE);
+  }
+
+  void fixRobotStateFoot(robot_state::RobotStatePtr &robot_state, double x, double y)
+  {
+    robot_state->setToDefaultValues();
+
+    // Enable the robot state to have a foot base
+    const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
+    const robot_model::JointModel* start_leg_joint = robot_model_->getJointModel("RLEG_JOINT0");
+    Eigen::Affine3d default_foot_transform = robot_state->getGlobalLinkTransform(foot);
+    //robot_state->printTransform(default_foot_transform, std::cout);
+
+    // Change the transform
+    default_foot_transform.translation().x() = x;
+    default_foot_transform.translation().y() = y;
+    default_foot_transform.translation().z() = 0.1; //0.15 for floor
+
+    // Set robot_state to maintain this location
+    robot_state->enableFakeBaseTransform(foot, start_leg_joint, default_foot_transform);
+  }
+
   void genRandPoseGrounded(int problems)
   {
     robot_state_->setToDefaultValues();
 
+    // Move robot to specific place on plane
+
+
+    fixRobotStateFoot(robot_state_, 1.0, 0.5);
+
+    // Show the lab as collision objects
+    //jskLabCollisionEnvironment();
+
+    // Create a constraint sampler for random poses
+    moveit_msgs::Constraints constr;
+    constraint_sampler_manager_loader::ConstraintSamplerManagerLoaderPtr constraint_sampler_manager_loader_;
+    constraint_sampler_manager_loader_.reset(new constraint_sampler_manager_loader::ConstraintSamplerManagerLoader());
+    constraint_samplers::ConstraintSamplerManagerPtr csm = constraint_sampler_manager_loader_->getConstraintSamplerManager();
+    constraint_samplers::ConstraintSamplerPtr cs = csm->selectSampler(planning_scene_, planning_group_name_, constr);
+
+    ROS_INFO_STREAM_NAMED("temp","Checking constraint sampler");
+    if (!cs)
+    {
+      ROS_ERROR_STREAM_NAMED("temp","No constraint sampler loaded");
+    }
+    ROS_INFO_STREAM_NAMED("temp","Chosen constraint sampler: " << cs->getName() );
+
+
     // loop at 1 Hz
-    ros::Rate loop_rate(1);
-
-    // Enable the robot state to have a foot base
-    const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
-    const Eigen::Affine3d default_foot_transform = robot_state_->getGlobalLinkTransform(foot);
-    robot_state_->enableFakeBaseTransform(foot, default_foot_transform);
-
+    ros::Rate loop_rate(10); // larger is faster
     for (int counter=0; counter < problems && ros::ok(); counter++)
     {
       if (!ros::ok())
         return;
-      
+
       // Reset
       //hideRobot();
       //ros::Duration(0.25).sleep();
 
       // Make random start state
-      if (!setRandomValidState(robot_state_, joint_model_group_))
-        return;      
+      //setRandomValidState(robot_state_, joint_model_group_);      
+      int attempts = 1;
+      cs->sample(*robot_state_, *robot_state_, attempts);
+
+
+
+      // Generate random stat
+      //robot_model::JointModelGroup *whole_body_fixed_ = robot_model_->getJointModelGroup("whole_body_fixed");
+      //robot_state_->setToRandomPositions(joint_model_group_);
+      //robot_state_->update(true); // prevent dirty transforms
+      //robot_state_->update(true);
+      //robot_state_->updateStateWithFakeBase();
+
 
       // Show original random
       //visual_tools_->publishRobotState(robot_state_);
       //ros::Duration(1.0).sleep();
 
-      // force update so that the virtual joint is updated to the grounded foot
-      robot_state_->update(true);
-
       // Display result
+      ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << counter);
       visual_tools_->publishRobotState(robot_state_);
+      ros::Duration(0.5).sleep();
+
 
       // let ROS send the message, then wait a while
       loop_rate.sleep();
@@ -1456,6 +1610,9 @@ private:
 
   // The visual tools for interfacing with Rviz
   //ompl_rviz_viewer::OmplRvizViewerPtr ompl_viewer_;
+
+  // Optional monitor to communicate with Rviz
+  planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
 
 }; // class
 

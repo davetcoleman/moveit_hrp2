@@ -32,21 +32,20 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-/* Author: Ioan Sucan, Dave Coleman */
+/* Author: Dave Coleman */
 
 #ifndef HRP2JSKNT_MOVEIT_PLUGINS__HRP2JSKNT_CONSTRAINT_SAMPLER_
 #define HRP2JSKNT_MOVEIT_PLUGINS__HRP2JSKNT_CONSTRAINT_SAMPLER_
 
 #include <moveit/constraint_samplers/constraint_sampler.h>
 #include <moveit/constraint_samplers/constraint_sampler_allocator.h>
+#include <moveit/constraint_samplers/constraint_sampler_manager.h>
 #include <random_numbers/random_numbers.h>
 #include <pluginlib/class_list_macros.h>
 #include <ros/ros.h>
 
-// debug: for publishing to rviz:
-#include <moveit/robot_state/robot_state.h>
-#include <moveit_msgs/DisplayRobotState.h>
-#include <moveit/robot_state/conversions.h>
+// Helper for Rviz
+#include <moveit_visual_tools/visual_tools.h>
 
 namespace hrp2jsknt_moveit_constraint_sampler
 {
@@ -75,11 +74,19 @@ public:
    *
    */
   HRP2JSKNTConstraintSampler(const planning_scene::PlanningSceneConstPtr &scene,
-    const std::string &group_name) :
-    ConstraintSampler(scene, group_name)
+                             const std::string &group_name)
+    : ConstraintSampler(scene, group_name)
+    , verbose_(true)
   {
+    // Visualization helper TODO: disable this
+    if (verbose_)
+    {
+      visual_tools_.reset(new moveit_visual_tools::VisualTools("/odom", "/hrp2_visual_markers", scene->getRobotModel()));
+    }
+
     logInform("constructing HRP2JSKNTConstraintSampler");
   }
+
   /**
    * \brief Configures a joint constraint given a Constraints message.
    *
@@ -124,25 +131,16 @@ public:
    *
    * @return True if the conditions are met, otherwise false
    */
-  bool configure(const std::vector<kinematic_constraints::JointConstraint> &jc);
+  bool configureJoint(const std::vector<kinematic_constraints::JointConstraint> &jc);
 
-  virtual bool sample(robot_state::RobotState &state,
-    const robot_state::RobotState &ks,
-    unsigned int max_attempts);
+  virtual bool sample(robot_state::RobotState &robot_state, const robot_state::RobotState &ks,
+                      unsigned int max_attempts);
 
-  bool sampleJoints(robot_state::RobotState &state);
+  bool sampleJoints(robot_state::RobotState &robot_state);
 
-  bool sampleOrientationConstraints(robot_state::RobotState &state);
+  bool sampleOrientationConstraints(robot_state::RobotState &robot_state);
 
-  /**
-   * \brief Use two IK solvers to find the location of the robot's legs
-   * \param state - the robot state as it has so far been sampled (upper body and torso)
-   * \param max_attempts - number of times to run IK before giving up
-   * \return true if it finds a valid location for both legs
-   */
-  bool calculateLegJoints(robot_state::RobotState &state, unsigned int max_attempts);
-
-  virtual bool project(robot_state::RobotState &state,
+  virtual bool project(robot_state::RobotState &robot_state,
     unsigned int max_attempts);
 
   /**
@@ -193,10 +191,7 @@ public:
   }
 
 private:
-  void displayRobotState(const robot_state::RobotState &robot_state);
 
-  ros::Publisher robot_state_publisher_;
-  moveit_msgs::DisplayRobotState display_robot_msg_;
   
 protected:
 
@@ -258,6 +253,11 @@ protected:
   // Allocate memory for storing transforms of feet
   Eigen::Affine3d left_foot_position_new_;
   Eigen::Affine3d right_foot_position_new_;
+
+  bool verbose_; // flag for outputting debug information
+
+  // For visualizing things in rviz
+  moveit_visual_tools::VisualToolsPtr visual_tools_;  
 };
 
 
@@ -277,6 +277,9 @@ public:
   virtual bool canService(const planning_scene::PlanningSceneConstPtr &scene, const std::string &group_name,
     const moveit_msgs::Constraints &constr) const
   {
+    // override: always use
+    return true;
+
     // do not use this sampler if there are any joint constraints, because then we are in the goal sampling stage
     if (
       constr.joint_constraints.size() == 0 &&
@@ -286,7 +289,7 @@ public:
       return true;
     }
 
-    logInform("hrp2jsknt_constraint_sampler: Not using custom constraint sampler");
+    logInform("hrp2jsknt_constraint_sampler: NOT using custom constraint sampler");
     return false;
   }
 

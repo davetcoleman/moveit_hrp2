@@ -58,30 +58,6 @@ bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &const
 
   double workspace = 1;
 
-  // X
-  jc1.joint_name = "virtual_joint/trans_x";
-  jc1.position = 0.0; // the default location
-  jc1.tolerance_above = workspace;
-  jc1.tolerance_below = workspace;
-  jc1.weight = 1;
-  constraints.joint_constraints.push_back(jc1);
-
-  // Y
-  jc1.joint_name = "virtual_joint/trans_y";
-  jc1.position = 0.0; // the default location
-  jc1.tolerance_above = workspace;
-  jc1.tolerance_below = workspace;
-  jc1.weight = 1;
-  constraints.joint_constraints.push_back(jc1);
-
-  // Z
-  jc1.joint_name = "virtual_joint/trans_z";
-  jc1.position = 0.0; // the default location
-  jc1.tolerance_above = 0; // hrp2 cannot jump
-  jc1.tolerance_below = 0.38; // min he can crouch
-  jc1.weight = 1;
-  constraints.joint_constraints.push_back(jc1);
-
   // x axis orientation
   oc1.link_name = "BODY";
   oc1.header.frame_id = "BODY";
@@ -99,7 +75,6 @@ bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &const
   */
   oc1.weight = 1;
   constraints.orientation_constraints.push_back(oc1);
-
 
   // construct the joint constraints
   std::vector<kinematic_constraints::JointConstraint> jc;
@@ -119,36 +94,36 @@ bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &const
   {
     // Create our one orientation constraint
     orientation_constraint_.reset(
-      new kinematic_constraints::OrientationConstraint(scene_->getRobotModel()));
+                                  new kinematic_constraints::OrientationConstraint(scene_->getRobotModel()));
     orientation_constraint_->configure(constraints.orientation_constraints[0], scene_->getTransforms());
   }
 
-  return configure(jc);
+  return configureJoint(jc);
 }
 
-bool HRP2JSKNTConstraintSampler::configure(const std::vector<kinematic_constraints::JointConstraint> &jc)
+bool HRP2JSKNTConstraintSampler::configureJoint(const std::vector<kinematic_constraints::JointConstraint> &jc)
 {
   clear();
 
   if (!jmg_)
   {
-    logError("NULL group specified for constraint sampler");
+    logError("NULL planning group specified for constraint sampler");
     return false;
   }
 
   if (jc.empty())
   {
-    sampler_name_ = "NOC";
-    //logError("no constraints passed to joint constraint sampler 2");
+    sampler_name_ = "NoConstraints";
+    logError("no JOINT constraints passed to joint constraint sampler 2");
     //return false;
   }
   else
-    sampler_name_ = "CON";
+    sampler_name_ = "hrp2jsk_constraint_sampler";
 
-  logError("%s CONFIGURE HRP2JSKNT CONSTRAINT SAMPLER", sampler_name_.c_str());
+  logError("%s: CONFIGURE HRP2JSKNT CONSTRAINT SAMPLER", sampler_name_.c_str());
 
   // find and keep the constraints that operate on the group we sample
-  // also keep bounds for joints as convenient
+  // also keep bounds for joints for convenience
   std::map<std::string, JointInfo> bound_data;
   for (std::size_t i = 0 ; i < jc.size() ; ++i)
   {
@@ -175,7 +150,7 @@ bool HRP2JSKNTConstraintSampler::configure(const std::vector<kinematic_constrain
 
     // Attempt to tighten the variables bounds if applicable from the constraint
     ji.potentiallyAdjustMinMaxBounds(std::max(joint_bounds.min_position_, jc[i].getDesiredJointPosition() - jc[i].getJointToleranceBelow()),
-      std::min(joint_bounds.max_position_, jc[i].getDesiredJointPosition() + jc[i].getJointToleranceAbove()));
+                                     std::min(joint_bounds.max_position_, jc[i].getDesiredJointPosition() + jc[i].getJointToleranceAbove()));
 
     // Debug
     logDebug("Bounds for %s JointConstraint are %g %g", jc[i].getJointVariableName().c_str(), ji.min_bound_, ji.max_bound_);
@@ -184,7 +159,8 @@ bool HRP2JSKNTConstraintSampler::configure(const std::vector<kinematic_constrain
     if (ji.min_bound_ > ji.max_bound_ + std::numeric_limits<double>::epsilon())
     {
       std::stringstream cs; jc[i].print(cs);
-      logError("The constraints for joint '%s' are such that there are no possible values for the joint: min_bound: %g, max_bound: %g. Failing.\n", jm->getName().c_str(), ji.min_bound_, ji.max_bound_);
+      logError("The constraints for joint '%s' have no possible values for the joint: min_bound: %g, max_bound: %g. Failing.\n", 
+               jm->getName().c_str(), ji.min_bound_, ji.max_bound_);
       clear();
       return false;
     }
@@ -201,8 +177,8 @@ bool HRP2JSKNTConstraintSampler::configure(const std::vector<kinematic_constrain
   const std::vector<const robot_model::JointModel*> &joints = jmg_->getJointModels();
   for (std::size_t i = 0 ; i < joints.size() ; ++i)
     if (bound_data.find(joints[i]->getName()) == bound_data.end() &&
-      joints[i]->getVariableCount() > 0 &&
-      joints[i]->getMimic() == NULL)
+        joints[i]->getVariableCount() > 0 &&
+        joints[i]->getMimic() == NULL)
     {
       // check if all the vars of the joint are found in bound_data instead
       const std::vector<std::string> &vars = joints[i]->getVariableNames();
@@ -227,31 +203,12 @@ bool HRP2JSKNTConstraintSampler::configure(const std::vector<kinematic_constrain
   values_.resize(jmg_->getVariableCount());
   is_valid_ = true;
 
-  // Load IK solvers and get leg positions ------------------------------------
-
-  // Create publishers for rviz
-  ros::NodeHandle nh_("~");
-  robot_state_publisher_ = nh_.advertise<moveit_msgs::DisplayRobotState>( "/hrp2_demos", 1 );
-
-  left_leg_ = scene_->getRobotModel()->getJointModelGroup("left_leg");
-  right_leg_ = scene_->getRobotModel()->getJointModelGroup("right_leg");
-
-  // Create a default robot state so that we can record its foot positions
-  moveit::core::RobotState goal_state(scene_->getRobotModel());
-  goal_state.setToDefaultValues();
-
-  // Get state of feet
-  left_foot_position_ = goal_state.getGlobalLinkTransform("LLEG_LINK5");
-  right_foot_position_ = goal_state.getGlobalLinkTransform("RLEG_LINK5");
-  // ------------------------------------------------------------------------
-
-  //logWarn("%s finished configuring", sampler_name_.c_str());
+  logWarn("%s: finished configuring joint sampler. Bounded: %d, Unbounded: %d", sampler_name_.c_str(), bounds_.size(), unbounded_.size());
   return true;
 }
 
-bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &state,
-  const robot_state::RobotState & /* reference_state */,
-  unsigned int max_attempts)
+bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, const robot_state::RobotState & /* reference_state */,
+                                        unsigned int max_attempts)
 {
   if (!jmg_)
     logError("no joint model group loaded");
@@ -262,52 +219,62 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &state,
     return false;
   }
 
-  logWarn("%s HRP2JSKNTConstraintSampler SAMPLING -----------------------------",sampler_name_.c_str());
+  logWarn("%s: HRP2JSKNTConstraintSampler SAMPLING -----------------------------",sampler_name_.c_str());
 
-  // Try 10 times
-  for (std::size_t i = 0; i < 10; ++i)
+  for (std::size_t i = 0; i < max_attempts; ++i)
   {
-    logInform("Sampling attempt number %d", i);
+    logInform("Sampling attempt number %d for group %s", i, jmg_->getName().c_str() );
+
+    // TODO: 
+    // Sample only chosen leg
+    // Check if torso is within constraints
+    // Sample rest of body
+    // Check balance constraints
 
     // Calculate random position of robot
-    // \todo: don't sample virtual joint orientation and the legs to save time
-    if (!sampleJoints(state))
+    /*
+    if (!sampleJoints(robot_state))
     {
       logError("Unable to sample joints");
       return false;
     }
+    */    
 
-    // Sample the orientation of the virtual joint quaternion within bounds
-    if (!sampleOrientationConstraints(state))
-    {
-      logError("Unable to sample orientation constraint");
-      return false;
-    }
+    // Generate random state
+    robot_state.setToRandomPositions(jmg_);
 
-    //printVirtualJointPosition(state);
 
     // show in rviz
-    //displayRobotState(state);
-    //ros::Duration(1.0).sleep();
-
-    // Now do IK to find leg position
-    if (calculateLegJoints(state, max_attempts))
+    if (verbose_ && false)
     {
-      // We found a valid location for both feet!
-
-      // show in rviz
-      //logInform("display robot state");
-      //displayRobotState(state);
-      //logInform("done display robot state");
-      //ros::Duration(1.0).sleep();
-
-      return true;
+      visual_tools_->publishRobotState(robot_state);
+      std::cout << "publishing from sampler " << std::endl;
+      ros::Duration(2.0).sleep();
     }
+    
+    // force update
+    robot_state.updateStateWithFakeBase();
+
+    // show in rviz
+    if (verbose_ && false)
+    {
+      visual_tools_->publishRobotState(robot_state);
+      std::cout << "publishing from sampler AFTER update" << std::endl;
+      ros::Duration(2.0).sleep();
+    }
+
+    // check if vjoint is within reasonable limits
+    
+
+
+    
+
+    return true;
   }
   return false;
 }
 
-bool HRP2JSKNTConstraintSampler::sampleJoints(robot_state::RobotState &state)
+bool HRP2JSKNTConstraintSampler::sampleJoints(robot_state::RobotState &robot_state)
 {
   // sample the unbounded joints first (in case some joint varipables are bounded)
   std::vector<double> v;
@@ -316,8 +283,8 @@ bool HRP2JSKNTConstraintSampler::sampleJoints(robot_state::RobotState &state)
     v.resize(unbounded_[i]->getVariableCount());
 
     if (false)
-      logInform("%s UNCONSTRAINED: Joint number %d named %s with variables %d", sampler_name_.c_str(),
-        i, unbounded_[i]->getName().c_str(),v.size());
+      logInform("%s: UNCONSTRAINED: Joint number %d named %s with variables %d", sampler_name_.c_str(),
+                i, unbounded_[i]->getName().c_str(),v.size());
 
     unbounded_[i]->getVariableRandomPositions(random_number_generator_, &v[0]);
 
@@ -331,19 +298,20 @@ bool HRP2JSKNTConstraintSampler::sampleJoints(robot_state::RobotState &state)
   for (std::size_t i = 0 ; i < bounds_.size() ; ++i)
   {
     if (false)
-      logInform("%s CONSTRAINED: Joint number %d named %s bounds [%f,%f]", sampler_name_.c_str(), bounds_[i].index_,
-        jmg_->getVariableNames()[ bounds_[i].index_ ].c_str(),
-        bounds_[i].min_bound_, bounds_[i].max_bound_);
+      logInform("%s: CONSTRAINED: Joint number %d named %s bounds [%f,%f]", sampler_name_.c_str(), bounds_[i].index_,
+                jmg_->getVariableNames()[ bounds_[i].index_ ].c_str(),
+                bounds_[i].min_bound_, bounds_[i].max_bound_);
 
     values_[bounds_[i].index_] = random_number_generator_.uniformReal(bounds_[i].min_bound_, bounds_[i].max_bound_);
   }
 
-  state.setJointGroupPositions(jmg_, values_);
+  robot_state.setJointGroupPositions(jmg_, values_);
 
   return true;
 }
 
-bool HRP2JSKNTConstraintSampler::sampleOrientationConstraints(robot_state::RobotState &state)
+// TODO remove
+bool HRP2JSKNTConstraintSampler::sampleOrientationConstraints(robot_state::RobotState &robot_state)
 {
   if (!orientation_constraint_->enabled())
   {
@@ -358,8 +326,8 @@ bool HRP2JSKNTConstraintSampler::sampleOrientationConstraints(robot_state::Robot
   double angle_y = 2.0 * (random_number_generator_.uniform01() - 0.5) * (orientation_constraint_->getYAxisTolerance()-std::numeric_limits<double>::epsilon());
   double angle_z = 2.0 * (random_number_generator_.uniform01() - 0.5) * (orientation_constraint_->getZAxisTolerance()-std::numeric_limits<double>::epsilon());
   Eigen::Affine3d diff(Eigen::AngleAxisd(angle_x, Eigen::Vector3d::UnitX())
-    * Eigen::AngleAxisd(angle_y, Eigen::Vector3d::UnitY())
-    * Eigen::AngleAxisd(angle_z, Eigen::Vector3d::UnitZ()));
+                       * Eigen::AngleAxisd(angle_y, Eigen::Vector3d::UnitY())
+                       * Eigen::AngleAxisd(angle_z, Eigen::Vector3d::UnitZ()));
   Eigen::Affine3d reqr(orientation_constraint_->getDesiredRotationMatrix() * diff.rotation());
   quat = Eigen::Quaterniond(reqr.rotation());
 
@@ -367,61 +335,24 @@ bool HRP2JSKNTConstraintSampler::sampleOrientationConstraints(robot_state::Robot
   if (orientation_constraint_->mobileReferenceFrame() && false) // TODO
   {
     logError("is mobile reference frame (?)");
-    const Eigen::Affine3d &t = state.getFrameTransform(orientation_constraint_->getReferenceFrame());
+    const Eigen::Affine3d &t = robot_state.getFrameTransform(orientation_constraint_->getReferenceFrame());
     Eigen::Affine3d rt(t.rotation() * quat.toRotationMatrix());
     quat = Eigen::Quaterniond(rt.rotation());
   }
 
   // Now set the virtual joint quaternion to this result
-  state.setVariablePosition("virtual_joint/rot_x", quat.x());
-  state.setVariablePosition("virtual_joint/rot_y", quat.y());
-  state.setVariablePosition("virtual_joint/rot_z", quat.x());
-  state.setVariablePosition("virtual_joint/rot_w", quat.w());
+  robot_state.setVariablePosition("virtual_joint/rot_x", quat.x());
+  robot_state.setVariablePosition("virtual_joint/rot_y", quat.y());
+  robot_state.setVariablePosition("virtual_joint/rot_z", quat.x());
+  robot_state.setVariablePosition("virtual_joint/rot_w", quat.w());
 
   return true;
 }
 
-bool HRP2JSKNTConstraintSampler::calculateLegJoints(robot_state::RobotState &state, unsigned int max_attempts)
+bool HRP2JSKNTConstraintSampler::project(robot_state::RobotState &robot_state,
+                                         unsigned int max_attempts)
 {
-
-  // Move feet positions to be directly under torso, in a regular parallel position, squatting if necessary
-  const Eigen::Affine3d &base_link = state.getJointTransform("virtual_joint");
-  const Eigen::Translation3d floor_z(0,0,-base_link.translation().z());
-
-  // First move the standard foot positions to under the current virtual_joint
-  left_foot_position_new_ = floor_z * base_link * left_foot_position_;
-  // Then move the z-axis up level with the floor
-  right_foot_position_new_ = floor_z * base_link * right_foot_position_;
-
-  // solve for one leg
-  if (state.setFromIK(left_leg_, left_foot_position_new_, max_attempts, 0.1))
-  {
-    //logInform("Found IK Solution for left!");
-
-    // solve for other leg
-    if (state.setFromIK(right_leg_, right_foot_position_new_, max_attempts, 0.1))
-    {
-      logInform("Found IK Solution for BOTH!");
-    }
-    else
-    {
-      logError("Did not find IK solution with %d attempts", max_attempts);
-      return false;
-    }
-  }
-  else
-  {
-    logError("Did not find IK solution with %d attempts", max_attempts);
-    return false;
-  }
-
-  return true;
-}
-
-bool HRP2JSKNTConstraintSampler::project(robot_state::RobotState &state,
-  unsigned int max_attempts)
-{
-  return sample(state, state, max_attempts);
+  return sample(robot_state, robot_state, max_attempts);
 }
 
 void HRP2JSKNTConstraintSampler::clear()
@@ -431,14 +362,6 @@ void HRP2JSKNTConstraintSampler::clear()
   unbounded_.clear();
   uindex_.clear();
   values_.clear();
-}
-
-void HRP2JSKNTConstraintSampler::displayRobotState(const robot_state::RobotState &robot_state)
-{
-  // send the message to the RobotState display
-  robot_state::robotStateToRobotStateMsg(robot_state, display_robot_msg_.state);
-  robot_state_publisher_.publish( display_robot_msg_ );
-  ros::spinOnce();
 }
 
 } //namespace
