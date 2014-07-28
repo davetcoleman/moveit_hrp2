@@ -876,12 +876,12 @@ public:
     const robot_model::JointModel* start_leg_joint = robot_model_->getJointModel("RLEG_JOINT0");
     Eigen::Affine3d default_foot_transform = robot_state->getGlobalLinkTransform(foot);
     //robot_state->printTransform(default_foot_transform, std::cout);
-
     // Change the transform
-    default_foot_transform.translation().x() = x;
-    default_foot_transform.translation().y() = y;
-    default_foot_transform.translation().z() = 0.1; //0.15 for floor
-
+    //default_foot_transform.translation().x() = x;
+    //default_foot_transform.translation().y() = y;
+    //default_foot_transform.translation().z() = 0.1; //0.15 for floor obstacle
+    default_foot_transform.translation().z() = 0.0; //0.15 for floor obstacle
+ 
     // Set robot_state to maintain this location
     robot_state->enableFakeBaseTransform(foot, start_leg_joint, default_foot_transform);
   }
@@ -891,8 +891,8 @@ public:
     robot_state_->setToDefaultValues();
 
     // Move robot to specific place on plane
-    //fixRobotStateFoot(robot_state_, 1.0, 0.5);
-    fixRobotStateFoot(robot_state_, 0.0, 0.0);
+    fixRobotStateFoot(robot_state_, 1.0, 0.5);
+    //fixRobotStateFoot(robot_state_, 0.0, 0.0);
 
     // Show the lab as collision objects
     //jskLabCollisionEnvironment();
@@ -926,19 +926,15 @@ public:
       int attempts = 100;
       cs->sample(*robot_state_, *robot_state_, attempts);
 
-      // Generate random stat
+      // Generate random state
       //robot_model::JointModelGroup *whole_body_fixed_ = robot_model_->getJointModelGroup("whole_body_fixed");
       //robot_state_->setToRandomPositions(joint_model_group_);
       //robot_state_->update(true); // prevent dirty transforms
       //robot_state_->update(true);
       //robot_state_->updateStateWithFakeBase();
 
-      // Show original random
-      //visual_tools_->publishRobotState(robot_state_);
-      //ros::Duration(1.0).sleep();
-
       // Display result
-      if (verbose)
+      if (verbose && false)
       {
         ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << counter);
         visual_tools_->publishRobotState(robot_state_);
@@ -1727,6 +1723,7 @@ int main(int argc, char **argv)
           ROS_INFO_STREAM_NAMED("demos","0 - Loop through all these modes continously");
           loop = true;
       }
+
       // Increment mode if desired
       if (loop)
       {
@@ -1736,10 +1733,12 @@ int main(int argc, char **argv)
       }
     } while (loop && ros::ok());
 
+
     // Check if ROS is shutting down
     if (!ros::ok())
       break;
-
+    std::cout << "debug final" << std::endl;
+    return 0;
     exit(0); // temp
 
     // Prompt user

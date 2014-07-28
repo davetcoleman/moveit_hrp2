@@ -47,6 +47,9 @@
 // Helper for Rviz
 #include <moveit_visual_tools/visual_tools.h>
 
+// Humanoid balance constraint tester
+#include <hrl_kinematics/TestStability.h>
+
 namespace hrp2jsknt_moveit_constraint_sampler
 {
 
@@ -249,6 +252,9 @@ protected:
   Eigen::Affine3d left_foot_position_;
   Eigen::Affine3d right_foot_position_;
 
+  // Store foot to torso translation
+  Eigen::Affine3d left_foot_to_torso_;
+
   // Allocate memory for storing transforms of feet
   Eigen::Affine3d left_foot_position_new_;
   Eigen::Affine3d right_foot_position_new_;
@@ -264,6 +270,9 @@ protected:
   double min_z_;
   double max_z_;
 
+  // Stability checker
+  //hrl_kinematics::TestStability test_stability_;
+  std::map<std::string, double> joint_positions_;
 };
 
 
