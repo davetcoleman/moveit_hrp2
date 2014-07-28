@@ -271,8 +271,8 @@ protected:
   double max_z_;
 
   // Stability checker
-  //hrl_kinematics::TestStability test_stability_;
-  std::map<std::string, double> joint_positions_;
+  hrl_kinematics::TestStability test_stability_;
+  //std::map<std::string, double> joint_positions_;
 };
 
 

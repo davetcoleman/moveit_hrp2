@@ -193,7 +193,37 @@
         <joint name="HEAD_JOINT0" value="0" />
         <joint name="HEAD_JOINT1" value="0" />
     </group_state>
-    <group_state name="reset_whole_body" group="whole_body_fixed">
+    <group_state name="reset_whole_body" group="whole_body">
+        <joint name="CHEST_JOINT0" value="-0.00078" />
+        <joint name="CHEST_JOINT1" value="0.158016" />
+        <joint name="LARM_JOINT0" value="0.139904" />
+        <joint name="LARM_JOINT1" value="0.1" />
+        <joint name="LARM_JOINT2" value="0.2165" />
+        <joint name="LARM_JOINT3" value="-1.3961" />
+        <joint name="LARM_JOINT4" value="0.1" />
+        <joint name="LARM_JOINT5" value="0.1" />
+        <joint name="LARM_JOINT6" value="0.1" />
+        <joint name="LLEG_JOINT0" value="0.00012" />
+        <joint name="LLEG_JOINT1" value="0.004331" />
+        <joint name="LLEG_JOINT2" value="-0.720431" />
+        <joint name="LLEG_JOINT3" value="1.47581" />
+        <joint name="LLEG_JOINT4" value="-0.755378" />
+        <joint name="LLEG_JOINT5" value="-0.004331" />
+        <joint name="RARM_JOINT0" value="0.1" />
+        <joint name="RARM_JOINT1" value="-0.1" />
+        <joint name="RARM_JOINT2" value="0.2165" />
+        <joint name="RARM_JOINT3" value="-1.3961" />
+        <joint name="RARM_JOINT4" value="0.1" />
+        <joint name="RARM_JOINT5" value="0.1" />
+        <joint name="RARM_JOINT6" value="0.1" />
+        <joint name="RLEG_JOINT0" value="0.000119" />
+        <joint name="RLEG_JOINT1" value="0.004325" />
+        <joint name="RLEG_JOINT2" value="-0.721202" />
+        <joint name="RLEG_JOINT3" value="1.47731" />
+        <joint name="RLEG_JOINT4" value="-0.756109" />
+        <joint name="RLEG_JOINT5" value="-0.004324" />
+    </group_state>
+    <group_state name="reset_whole_body_fixed" group="whole_body_fixed">
         <joint name="CHEST_JOINT0" value="-0.00078" />
         <joint name="CHEST_JOINT1" value="0.158016" />
         <joint name="LARM_JOINT0" value="0.139904" />

@@ -237,8 +237,8 @@ public:
 
   void genRandMoveItPlan()
   {
-    setStateToGroupPose(goal_state_,  "reset_whole_body", joint_model_group_);
-    setStateToGroupPose(robot_state_, "reset_whole_body", joint_model_group_);
+    setStateToGroupPose(goal_state_,  "reset_whole_body_fixed", joint_model_group_);
+    setStateToGroupPose(robot_state_, "reset_whole_body_fixed", joint_model_group_);
 
     // Generate random goal positions
     ros::Rate loop_rate(1);
@@ -873,26 +873,35 @@ public:
 
     // Enable the robot state to have a foot base
     const robot_model::LinkModel* foot = robot_model_->getLinkModel("LLEG_LINK5");
-    const robot_model::JointModel* start_leg_joint = robot_model_->getJointModel("RLEG_JOINT0");
-    Eigen::Affine3d default_foot_transform = robot_state->getGlobalLinkTransform(foot);
+    const robot_model::JointModel* start_leg_joint = robot_model_->getJointModel("LLEG_JOINT0");
+    Eigen::Affine3d default_foot_transform = robot_state->getGlobalLinkTransform(foot); // get the orientation
     //robot_state->printTransform(default_foot_transform, std::cout);
-    // Change the transform
-    //default_foot_transform.translation().x() = x;
-    //default_foot_transform.translation().y() = y;
-    //default_foot_transform.translation().z() = 0.1; //0.15 for floor obstacle
-    default_foot_transform.translation().z() = 0.0; //0.15 for floor obstacle
+
+    // Change the translation transform component
+    default_foot_transform.translation().x() = x;
+    default_foot_transform.translation().y() = y;
+    default_foot_transform.translation().z() = 0.1; //0.15 for floor obstacle
+    //default_foot_transform.translation().z() = 0.0; //0.15 for floor obstacle
  
     // Set robot_state to maintain this location
     robot_state->enableFakeBaseTransform(foot, start_leg_joint, default_foot_transform);
   }
 
-  void genRandPoseGrounded(int problems, bool verbose)
+  /**
+   * \brief Sample a full body's joint positions randomly for sampling based planning
+   * \param runs - how many attempts to do each sample
+   * \param problems - how many times to sample
+   * \param verbose
+   */
+  void genRandPoseGrounded(int runs, int problems, bool verbose)
   {
+    int attempts = runs;
+
     robot_state_->setToDefaultValues();
 
     // Move robot to specific place on plane
-    fixRobotStateFoot(robot_state_, 1.0, 0.5);
-    //fixRobotStateFoot(robot_state_, 0.0, 0.0);
+    //fixRobotStateFoot(robot_state_, 1.0, 0.5);
+    fixRobotStateFoot(robot_state_, 0.0, 0.0);
 
     // Show the lab as collision objects
     //jskLabCollisionEnvironment();
@@ -915,7 +924,7 @@ public:
     ros::Time start_time;
     start_time = ros::Time::now();
 
-    for (int counter = 0; counter < problems && ros::ok(); counter++)
+    for (int problem_id = 0; problem_id < problems && ros::ok(); problem_id++)
     {
       // Reset
       //hideRobot();
@@ -923,20 +932,21 @@ public:
 
       // Make random start state
       //setRandomValidState(robot_state_, joint_model_group_);      
-      int attempts = 100;
+
       cs->sample(*robot_state_, *robot_state_, attempts);
 
       // Generate random state
       //robot_model::JointModelGroup *whole_body_fixed_ = robot_model_->getJointModelGroup("whole_body_fixed");
       //robot_state_->setToRandomPositions(joint_model_group_);
       //robot_state_->update(true); // prevent dirty transforms
-      //robot_state_->update(true);
+
+      //robot_state_->update(true);      
       //robot_state_->updateStateWithFakeBase();
 
       // Display result
       if (verbose && false)
       {
-        ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << counter);
+        ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << problem_id);
         visual_tools_->publishRobotState(robot_state_);
         ros::Duration(1.0).sleep();
       }
@@ -1024,6 +1034,10 @@ public:
       return "left_arm_ik_default";
     }
     else if (planning_group == "whole_body_fixed")
+    {
+      return "reset_whole_body_fixed";
+    }
+    else if (planning_group == "whole_body")
     {
       return "reset_whole_body";
     }
@@ -1712,7 +1726,7 @@ int main(int argc, char **argv)
           break;
         case 7:
           ROS_INFO_STREAM_NAMED("demos","7 - Generate completely random poses of robot, then transform robot to foot on ground");
-          client.genRandPoseGrounded(problems, verbose);
+          client.genRandPoseGrounded(runs, problems, verbose);
           break;
         case 8:
           ROS_INFO_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");

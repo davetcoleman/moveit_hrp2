@@ -41,7 +41,6 @@
 #include <set>
 #include <cassert>
 #include <eigen_conversions/eigen_msg.h>
-//#include <boost/bind.hpp>
 #include <boost/format.hpp>
 
 namespace hrp2jsknt_moveit_constraint_sampler
@@ -113,7 +112,13 @@ bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &const
   moveit::core::RobotState temp_state(scene_->getCurrentState());
   temp_state.setToDefaultValues();
   left_foot_to_torso_ = temp_state.getGlobalLinkTransform("LLEG_LINK5");
-  //temp_state.printTransform(left_foot_to_torso_, std::cout);
+  std::cout << "Left foot to torso: " << std::endl;
+  temp_state.printTransform(left_foot_to_torso_, std::cout);
+  std::cout << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
 
   // Move the x & y bounds over from foot frame of reference to torso frame of reference. z is always w.r.t. ground (0)
   max_x_ -= left_foot_to_torso_.translation().x();
@@ -122,11 +127,13 @@ bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &const
   min_y_ -= left_foot_to_torso_.translation().y();
 
   // Setup HRL Kinematics Balance Constraint
-  const std::vector<const moveit::core::JointModel*> joints = jmg_->getActiveJointModels();
-  for (std::size_t i = 0 ; i < joints.size() ; ++i)
-  {
+  /*
+    const std::vector<const moveit::core::JointModel*> joints = jmg_->getActiveJointModels();
+    for (std::size_t i = 0 ; i < joints.size() ; ++i)
+    {
     joint_positions_.insert(std::make_pair(joints.at(i)->getName(), 0)); // 0 is dummy value
-  }
+    }
+  */
 
   return configureJoint(jc);
 }
@@ -241,12 +248,12 @@ bool HRP2JSKNTConstraintSampler::displayBoundingBox()
 {
   geometry_msgs::Point point1;
   geometry_msgs::Point point2;
-  point1.x = max_x_; // - left_foot_to_torso_.translation().x();
-  point1.y = max_y_;// - left_foot_to_torso_.translation().y();
-  point1.z = max_z_; // - left_foot_to_torso_.translation().z();
-  point2.x = min_x_;// - left_foot_to_torso_.translation().x();
-  point2.y = min_y_;// - left_foot_to_torso_.translation().y();
-  point2.z = min_z_; // - left_foot_to_torso_.translation().z();
+  point1.x = max_x_;
+  point1.y = max_y_;
+  point1.z = max_z_;
+  point2.x = min_x_;
+  point2.y = min_y_;
+  point2.z = min_z_;
 
   return visual_tools_->publishRectangle(point1, point2, moveit_visual_tools::TRANSLUCENT);
 }
@@ -275,10 +282,12 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
   logWarn("%s: HRP2JSKNTConstraintSampler SAMPLING -----------------------------",sampler_name_.c_str());
 
   const robot_model::JointModel *vjoint = jmg_->getJointModel("virtual_joint");
+  const robot_model::LinkModel  *rfoot  = jmg_->getLinkModel("RLEG_LINK5");
+  const robot_model::LinkModel  *lfoot  = jmg_->getLinkModel("LLEG_LINK5");
   //const robot_model::JointModelGroup *whole_body_fixed = robot_state.getRobotModel()->getJointModelGroup("whole_body_fixed");
-  const robot_model::LinkModel *rfoot = jmg_->getLinkModel("RLEG_LINK5");
 
-  max_attempts = 1; // TODO
+  robot_state.setToDefaultValues(jmg_, "reset_whole_body");
+
   for (std::size_t attempt = 0; attempt < max_attempts; ++attempt)
   {
     if (verbose_)
@@ -297,6 +306,15 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
     // Generate random state
     // TODO: make this only sample the leg, then later sample the rest of the robot
     robot_state.setToRandomPositions(jmg_);
+    
+    // Generate simple movement states
+    if (false)
+    {
+      double lleg_position[1];
+      lleg_position[0] = robot_state.getJointPositions("LLEG_JOINT1")[0] + 0.01;
+      robot_state.setJointPositions("LLEG_JOINT1", lleg_position);
+    }
+
 
     /* show in rviz
        if (verbose_)
@@ -309,7 +327,7 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
 
     // force update
     robot_state.updateStateWithFakeBase();
-
+    //robot_state.update(true);
     /*
     // Check if vjoint (torso) is within reasonable limits
     const double* vjoint_positions = robot_state.getJointPositions(vjoint);
@@ -349,46 +367,25 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
 
 
     // Check COM balance constraints --------------------------------------------------------------
-
-    /*
-    //const std::vector<const moveit::core::JointModel*> joints = jmg_->getActiveJointModels();
-    const double* positions = robot_state.getVariablePositions() ;
-    for (std::size_t i = 0 ; i < joint_positions_.size() ; ++i)
+    std::map<std::string, double> joint_positions_map;
+    const robot_model::JointModelGroup* whole_body_fixed_ = robot_state.getRobotModel()->getJointModelGroup("whole_body_fixed");
+    for (std::size_t i = 0; i < whole_body_fixed_->getVariableCount(); ++i)
     {
-    //joint_positions_.insert(std::make_pair(joints.at(i)->getName(), positions[i]));
-    joint_positions_[jmg_->getActiveJointModels()[i]->getName()] = positions[i];
-    positions++ ;
-    }
-    */
-    std::map<std::string, double> joint_positions;
-    const std::vector<const moveit::core::JointModel*> joints = jmg_->getActiveJointModels();
-    double* positions; // = robot_state.getVariablePositions() ;
-    robot_state.copyJointGroupPositions(jmg_, positions);
-    std::size_t var_id = 0;
-    for (std::size_t i = 0 ; i < joints.size() ; ++i)
-    {
-      // Ignore multi-dof joints because I don't think HRL kinematics knows how to handle this TODO: is this true?
-      if (joints[i]->getVariableCount() == 1)
-      {
-        //std::cout << "joint name: " << joints[i]->getName() << " value: " << positions[var_id] << std::endl;
-        joint_positions.insert(std::make_pair(joints[i]->getName(), positions[var_id]));
-      }
-      else
-      {
-        //ROS_WARN_STREAM_NAMED("temp","skipping joint " << i << " of name " << joints[i]->getName() << " with " << joints[i]->getVariableCount() << " vars");
-        var_id += joints[i]->getVariableCount() - 1; // skip these variables, including the one var we will skip at the end of the loop
-      }
-      var_id ++;
-    }
-    //robot_state.printStatePositions(std::cout);
+      //std::cout << "var " << i << " var name " << whole_body_fixed_->getJointModels()[i]->getName()
+      //          << " value " << robot_state.getJointPositions(whole_body_fixed_->getJointModels()[i])[0] << std::endl;
 
-    /*
+      joint_positions_map.insert(std::make_pair(whole_body_fixed_->getJointModels()[i]->getName(),
+                                                robot_state.getJointPositions(whole_body_fixed_->getJointModels()[i])[0]));
+    }
+
     hrl_kinematics::Kinematics::FootSupport support_mode_ = hrl_kinematics::Kinematics::SUPPORT_SINGLE_LEFT;
     //hrl_kinematics::Kinematics::FootSupport support_mode_ = hrl_kinematics::Kinematics::SUPPORT_DOUBLE;
     tf::Vector3 normal_vector(0.0, 0.0, 1.0);
     normal_vector.normalize(); // TODO is this necessary?
-    bool stable = test_stability_.isPoseStable(joint_positions, support_mode_, normal_vector);
+    bool stable = test_stability_.isPoseStable(joint_positions_map, support_mode_, normal_vector);
     tf::Point com = test_stability_.getCOM();
+
+    //visual_tools_->deleteAllMarkers();
 
     // Publish visualization to Rviz
     {
@@ -397,41 +394,62 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
       com_marker.pose =
         moveit_visual_tools::VisualTools::convertPose(moveit_visual_tools::VisualTools::convertPose(com_marker.pose) *
                                                       robot_state.getGlobalLinkTransform(com_marker.header.frame_id));
+
       // Change frame name to world fame
       com_marker.header.frame_id = robot_state.getRobotModel()->getModelFrame(); // odom
+      com_marker.ns = "COM";
       //std::cout << "new marker: ------------- \n " << com_marker << std::endl;
       visual_tools_->publishMarker(com_marker);
     }
 
+
     // Change polygon points to world frame
+    if (false)
     {
-      geometry_msgs::PolygonStamped polygon_msg = test_stability_.getSupportPolygon();
+      const geometry_msgs::PolygonStamped polygon_msg = test_stability_.getSupportPolygon();
+
+      std::vector<geometry_msgs::Point> points;
       for (std::size_t i = 0; i < polygon_msg.polygon.points.size(); ++i)
       {
-        polygon_msg.polygon.points[i] = 
-          moveit_visual_tools::VisualTools::convertPoint32(moveit_visual_tools::VisualTools::convertPoint32(polygon_msg.polygon.points[i]) +
-                                                           robot_state.getGlobalLinkTransform(polygon_msg.header.frame_id).translation());
+        Eigen::Affine3d temp_pose = moveit_visual_tools::VisualTools::convertPoint32ToPose(polygon_msg.polygon.points[i]);
+
+        //temp_pose.translation().z() = temp_pose.translation().z() - 0.1;
+        robot_state.update(true);
+        //robot_state.printTransform(robot_state.getGlobalLinkTransform("BODY"));
+        temp_pose = temp_pose * robot_state.getGlobalLinkTransform("BODY");
+
+        points.push_back( visual_tools_->convertPose(temp_pose).position );
       }
-      visual_tools_->publishPolygon(polygon_msg.polygon);
+      points.push_back(points.front()); // connect first and last points for last line
+
+      visual_tools_->publishPath(points);
     }
 
     // show in rviz
     if (verbose_)
     {
       visual_tools_->publishRobotState(robot_state);
+      std::cout << "PUBLISHING ROBOT STATE FROM SAMPLER " << std::endl;
       ros::Duration(1.0).sleep();
     }
 
     if (stable)
     {
-      ROS_INFO("Pose is stable, pCOM at %f %f", com.x(), com.y());
+      ROS_INFO("Pose is stable, pCOM at %f %f ---------------------------------------------", com.x(), com.y());
+      std::cout << "------------------------------------------------------------ " << std::endl;
+      std::cout << "------------------------------------------------------------ " << std::endl;
+      std::cout << "------------------------------------------------------------ " << std::endl;
+      std::cout << "------------------------------------------------------------ " << std::endl;
+      std::cout << "------------------------------------------------------------ " << std::endl;
+      std::cout << "------------------------------------------------------------ " << std::endl;
+      std::cout << "------------------------------------------------------------ " << std::endl;
+      ros::Duration(5.0).sleep();
     }
     else
     {
       ROS_WARN("Pose is NOT stable, pCOM at %f %f", com.x(), com.y());
       continue;
     }
-    */
 
     return true;
   } // for attempts

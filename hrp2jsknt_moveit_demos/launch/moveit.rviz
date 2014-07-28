@@ -8,6 +8,7 @@ Panels:
         - /MotionPlanning1/Scene Geometry1
         - /MotionPlanning1/Planning Request1
         - /MotionPlanning1/Planned Path1
+        - /HRP2 Demos Marker1
         - /HRP2 Demos Marker1/Namespaces1
         - /PlanningScene1/Scene Geometry1
         - /TF1/Tree1
@@ -27,7 +28,7 @@ Visualization Manager:
       Cell Size: 1
       Class: rviz/Grid
       Color: 160; 160; 164
-      Enabled: true
+      Enabled: false
       Line Style:
         Line Width: 0.03
         Value: Lines
@@ -40,7 +41,7 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
-      Value: true
+      Value: false
     - Alpha: 0.25
       Cell Size: 0.25
       Class: rviz/Grid
@@ -1553,6 +1554,7 @@ Visualization Manager:
       Name: HRP2 Demos Marker
       Namespaces:
         "": true
+        Polygon: true
         Rectangle: true
       Queue Size: 100
       Value: true
@@ -1618,22 +1620,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 4.44629
+      Distance: 4.54012
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.594506
-        Y: -0.0354754
-        Z: 0
+        X: 0.447601
+        Y: 0.00702557
+        Z: 1.78814e-07
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.105399
+      Pitch: 0.294797
       Target Frame: BODY
       Value: XYOrbit (rviz)
-      Yaw: 0.0104001
+      Yaw: 0.180413
     Saved: ~
 Window Geometry:
   Displays:
