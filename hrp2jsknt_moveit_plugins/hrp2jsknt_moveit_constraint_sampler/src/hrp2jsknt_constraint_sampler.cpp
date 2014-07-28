@@ -134,13 +134,14 @@ bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &const
   min_y_ -= left_foot_to_torso_.translation().y();
 
   // Setup HRL Kinematics Balance Constraint
-  /*
-    const std::vector<const moveit::core::JointModel*> joints = jmg_->getActiveJointModels();
-    for (std::size_t i = 0 ; i < joints.size() ; ++i)
-    {
-    joint_positions_.insert(std::make_pair(joints.at(i)->getName(), 0)); // 0 is dummy value
-    }
-  */
+  robot_joint_group_ = scene_->getRobotModel()->getJointModelGroup("robot_joints");
+    //hrl_kinematics::Kinematics::FootSupport support_mode_ = hrl_kinematics::Kinematics::SUPPORT_DOUBLE;
+
+  for (std::size_t i = 0; i < robot_joint_group_->getVariableCount(); ++i)
+  {
+    // Intitialize empty
+    joint_positions_map_.insert(std::make_pair(robot_joint_group_->getJointModels()[i]->getName(), 0));
+  }
 
   return configureJoint(jc);
 }
@@ -303,6 +304,9 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
 
   robot_state.setToDefaultValues(jmg_, "reset_whole_body");
 
+  bool stable;
+  tf::Point com;
+
   for (std::size_t attempt = 0; attempt < max_attempts; ++attempt)
   {
     if (verbose_)
@@ -372,23 +376,19 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
     // TODO
 
     // Check COM balance constraints --------------------------------------------------------------
-    std::map<std::string, double> joint_positions_map;
-    const robot_model::JointModelGroup* whole_body_fixed_ = robot_state.getRobotModel()->getJointModelGroup("robot_joints");
-    for (std::size_t i = 0; i < whole_body_fixed_->getVariableCount(); ++i)
+    for (std::size_t i = 0; i < robot_joint_group_->getVariableCount(); ++i)
     {
-      //std::cout << "var " << i << " var name " << whole_body_fixed_->getJointModels()[i]->getName()
-      //          << " value " << robot_state.getJointPositions(whole_body_fixed_->getJointModels()[i])[0] << std::endl;
+      //std::cout << "var " << i << " var name " << robot_joint_group_->getJointModels()[i]->getName()
+      //          << " value " << robot_state.getJointPositions(robot_joint_group_->getJointModels()[i])[0] << std::endl;
 
-      joint_positions_map.insert(std::make_pair(whole_body_fixed_->getJointModels()[i]->getName(),
-                                                robot_state.getJointPositions(whole_body_fixed_->getJointModels()[i])[0]));
+      //joint_positions_map_.insert(std::make_pair(robot_joint_group_->getJointModels()[i]->getName(),
+      //                                          robot_state.getJointPositions(robot_joint_group_->getJointModels()[i])[0]));
+      joint_positions_map_[robot_joint_group_->getJointModels()[i]->getName()] = 
+        robot_state.getJointPositions(robot_joint_group_->getJointModels()[i])[0];
     }
 
-    hrl_kinematics::Kinematics::FootSupport support_mode_ = hrl_kinematics::Kinematics::SUPPORT_SINGLE_LEFT;
-    //hrl_kinematics::Kinematics::FootSupport support_mode_ = hrl_kinematics::Kinematics::SUPPORT_DOUBLE;
-    tf::Vector3 normal_vector(0.0, 0.0, 1.0);
-    normal_vector.normalize(); // TODO is this necessary?
-    bool stable = test_stability_.isPoseStable(joint_positions_map, support_mode_, normal_vector);
-    tf::Point com = test_stability_.getCOM();
+    stable = test_stability_.isPoseStable(joint_positions_map_, support_mode_, normal_vector_);
+    com = test_stability_.getCOM();
 
     //visual_tools_->deleteAllMarkers();
 
@@ -407,7 +407,6 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
       //std::cout << "new marker: ------------- \n " << com_marker << std::endl;
       visual_tools_->publishMarker(com_marker);
     }
-
 
     // Change polygon points to world frame
     if (verbose_ && false)

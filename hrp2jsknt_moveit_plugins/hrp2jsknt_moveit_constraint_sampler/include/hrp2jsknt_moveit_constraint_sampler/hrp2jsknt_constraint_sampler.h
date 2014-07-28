@@ -79,7 +79,12 @@ public:
   HRP2JSKNTConstraintSampler(const planning_scene::PlanningSceneConstPtr &scene,
                              const std::string &group_name)
     : ConstraintSampler(scene, group_name)
+    , normal_vector_(0.0, 0.0, 1.0)
+    , support_mode_(hrl_kinematics::Kinematics::SUPPORT_SINGLE_LEFT)
   {
+
+    normal_vector_.normalize(); // TODO is this necessary?
+
     logInform("constructing HRP2JSKNTConstraintSampler");
   }
 
@@ -274,7 +279,10 @@ public:
 
   // Stability checker
   hrl_kinematics::TestStability test_stability_;
-  //std::map<std::string, double> joint_positions_;
+  std::map<std::string, double> joint_positions_map_;
+  const robot_model::JointModelGroup* robot_joint_group_;
+  hrl_kinematics::Kinematics::FootSupport support_mode_;
+  tf::Vector3 normal_vector_;
 };
 
 
