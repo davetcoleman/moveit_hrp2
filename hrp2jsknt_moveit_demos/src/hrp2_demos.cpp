@@ -932,25 +932,28 @@ public:
 
       // Make random start state
       //setRandomValidState(robot_state_, joint_model_group_);      
-
-      cs->sample(*robot_state_, *robot_state_, attempts);
-
-      // Generate random state
-      //robot_model::JointModelGroup *whole_body_fixed_ = robot_model_->getJointModelGroup("whole_body_fixed");
-      //robot_state_->setToRandomPositions(joint_model_group_);
-      //robot_state_->update(true); // prevent dirty transforms
-
-      //robot_state_->update(true);      
-      //robot_state_->updateStateWithFakeBase();
-
+     
       // Display result
-      if (verbose && false)
+      if (cs->sample(*robot_state_, *robot_state_, attempts))
       {
-        ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << problem_id);
-        visual_tools_->publishRobotState(robot_state_);
-        ros::Duration(1.0).sleep();
+        ROS_INFO_STREAM_NAMED("temp","Found a valid sample " << problem_id);
+        std::cout << std::endl;
+        
+        if (verbose)
+        {
+          ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << problem_id);
+          visual_tools_->publishRobotState(robot_state_);
+          ros::Duration(2.0).sleep();
+        }
+      }
+      else
+      {
+        ROS_FATAL_STREAM_NAMED("","Did not find a valid sample");
+        exit(-1);
       }
     }
+
+    cs->getName();
 
     double duration = (ros::Time::now() - start_time).toSec();
     ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds. Average sample time: " << (duration/double(problems)) << " s");

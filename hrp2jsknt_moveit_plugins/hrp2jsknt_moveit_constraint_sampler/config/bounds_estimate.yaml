@@ -1,7 +1,13 @@
 hrp2jsknt_torso:
-  min_x: -0.4
-  max_x: 0.4
-  min_y: -0.4
-  max_y: 0.4
-  min_z: 0.2
-  max_z: 1
+#  min_x: -0.4
+#  max_x: 0.4
+#  min_y: -0.4
+#  max_y: 0.4
+#  min_z: 0.2
+#  max_z: 1
+  min_x: -0.44564
+  max_x: 0.270967
+  min_y: -0.223091
+  max_y: 0.118065
+  min_z: 0.193524
+  max_z: 0.732025

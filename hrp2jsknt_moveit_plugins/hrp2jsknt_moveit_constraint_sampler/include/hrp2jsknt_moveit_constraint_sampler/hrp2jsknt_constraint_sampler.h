@@ -133,8 +133,8 @@ public:
    * \brief Debug function for showing the course-grain constraint enforcement of torso
    * \return true on success
    */
-  bool displayBoundingBox();
-  
+  bool displayBoundingBox() const;
+
   virtual bool sample(robot_state::RobotState &robot_state, const robot_state::RobotState &ks,
                       unsigned int max_attempts);
 
@@ -143,7 +143,7 @@ public:
   bool sampleOrientationConstraints(robot_state::RobotState &robot_state);
 
   virtual bool project(robot_state::RobotState &robot_state,
-    unsigned int max_attempts);
+                       unsigned int max_attempts);
 
   /**
    * \brief Gets the number of constrained joints - joints that have an
@@ -175,27 +175,29 @@ public:
    */
   virtual const std::string& getName() const
   {
+    //printVirtualJointExtremes();
     static const std::string SAMPLER_NAME = "HRP2JSKNTConstraintSampler";
     return SAMPLER_NAME;
   }
 
-  void printVirtualJointPosition(const robot_state::RobotState &robot_state)
+  void printVirtualJointExtremes() const
   {
-    logInform("Virtual Joint Positions:");
-    const double* positions = robot_state.getJointPositions("virtual_joint");
-    std::cout << "X: " << positions[0] << std::endl;
-    std::cout << "Y: " << positions[1] << std::endl;
-    std::cout << "Z: " << positions[2] << std::endl;
-    std::cout << "Qx: " << positions[3] << std::endl;
-    std::cout << "Qy: " << positions[4] << std::endl;
-    std::cout << "QZ: " << positions[5] << std::endl;
-    std::cout << "Qw: " << positions[6] << std::endl;
+    std::cout << "Virtual Joint Extremes: " << std::endl;
+    std::cout << "  min_x: " << min_x_ << std::endl;
+    std::cout << "  max_x: " << max_x_ << std::endl;
+    std::cout << "  min_y: " << min_y_ << std::endl;
+    std::cout << "  max_y: " << max_y_ << std::endl;
+    std::cout << "  min_z: " << min_z_ << std::endl;
+    std::cout << "  max_z: " << max_z_ << std::endl;
+
+    displayBoundingBox();
   }
 
-private:
 
-  
-protected:
+  private:
+
+
+  protected:
 
   /// \brief An internal structure used for maintaining constraints on a particular joint
   struct JointInfo
@@ -260,7 +262,7 @@ protected:
   Eigen::Affine3d right_foot_position_new_;
 
   // For visualizing things in rviz
-  moveit_visual_tools::VisualToolsPtr visual_tools_;  
+  moveit_visual_tools::VisualToolsPtr visual_tools_;
 
   // Bounds for estimating virtural joint contraint
   double min_x_;
@@ -282,7 +284,7 @@ class HRP2JSKNTConstraintSamplerAllocator : public constraint_samplers::Constrai
 public:
 
   virtual constraint_samplers::ConstraintSamplerPtr alloc(const planning_scene::PlanningSceneConstPtr &scene,
-    const std::string &group_name, const moveit_msgs::Constraints &constr)
+                                                          const std::string &group_name, const moveit_msgs::Constraints &constr)
   {
     constraint_samplers::ConstraintSamplerPtr cs(new HRP2JSKNTConstraintSampler(scene, group_name));
     cs->configure(constr);
@@ -290,15 +292,15 @@ public:
   }
 
   virtual bool canService(const planning_scene::PlanningSceneConstPtr &scene, const std::string &group_name,
-    const moveit_msgs::Constraints &constr) const
+                          const moveit_msgs::Constraints &constr) const
   {
     // override: always use
     return true;
 
     // do not use this sampler if there are any joint constraints, because then we are in the goal sampling stage
     if (
-      constr.joint_constraints.size() == 0 &&
-      group_name == "whole_body")
+        constr.joint_constraints.size() == 0 &&
+        group_name == "whole_body")
     {
       logInform("hrp2jsknt_constraint_sampler: Using custom constraint sampler");
       return true;
@@ -313,7 +315,7 @@ public:
 } // namespace
 
 PLUGINLIB_EXPORT_CLASS(hrp2jsknt_moveit_constraint_sampler::HRP2JSKNTConstraintSamplerAllocator,
-  constraint_samplers::ConstraintSamplerAllocator);
+                       constraint_samplers::ConstraintSamplerAllocator);
 
 
 #endif
