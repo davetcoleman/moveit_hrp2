@@ -76,14 +76,7 @@ public:
   HRP2JSKNTConstraintSampler(const planning_scene::PlanningSceneConstPtr &scene,
                              const std::string &group_name)
     : ConstraintSampler(scene, group_name)
-    , verbose_(true)
   {
-    // Visualization helper TODO: disable this
-    if (verbose_)
-    {
-      visual_tools_.reset(new moveit_visual_tools::VisualTools("/odom", "/hrp2_visual_markers", scene->getRobotModel()));
-    }
-
     logInform("constructing HRP2JSKNTConstraintSampler");
   }
 
@@ -133,6 +126,12 @@ public:
    */
   bool configureJoint(const std::vector<kinematic_constraints::JointConstraint> &jc);
 
+  /**
+   * \brief Debug function for showing the course-grain constraint enforcement of torso
+   * \return true on success
+   */
+  bool displayBoundingBox();
+  
   virtual bool sample(robot_state::RobotState &robot_state, const robot_state::RobotState &ks,
                       unsigned int max_attempts);
 
@@ -254,10 +253,17 @@ protected:
   Eigen::Affine3d left_foot_position_new_;
   Eigen::Affine3d right_foot_position_new_;
 
-  bool verbose_; // flag for outputting debug information
-
   // For visualizing things in rviz
   moveit_visual_tools::VisualToolsPtr visual_tools_;  
+
+  // Bounds for estimating virtural joint contraint
+  double min_x_;
+  double max_x_;
+  double min_y_;
+  double max_y_;
+  double min_z_;
+  double max_z_;
+
 };
 
 

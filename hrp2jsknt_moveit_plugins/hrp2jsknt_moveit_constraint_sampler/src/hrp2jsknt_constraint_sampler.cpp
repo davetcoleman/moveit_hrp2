@@ -41,11 +41,11 @@
 #include <set>
 #include <cassert>
 #include <eigen_conversions/eigen_msg.h>
-#include <boost/bind.hpp>
+//#include <boost/bind.hpp>
+#include <boost/format.hpp>
 
 namespace hrp2jsknt_moveit_constraint_sampler
 {
-
 bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &constr)
 {
   moveit_msgs::Constraints constraints = constr; // copy to non-const
@@ -97,6 +97,17 @@ bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &const
                                   new kinematic_constraints::OrientationConstraint(scene_->getRobotModel()));
     orientation_constraint_->configure(constraints.orientation_constraints[0], scene_->getTransforms());
   }
+
+  // Load the torso (vjoint) bounds from yaml file
+  ros::NodeHandle nh("~");
+  static const std::string group_name = "hrp2jsknt_torso";
+  nh.param(group_name + "/min_x", min_x_, 0.0);
+  nh.param(group_name + "/max_x", max_x_, 0.0);
+  nh.param(group_name + "/min_y", min_y_, 0.0);
+  nh.param(group_name + "/max_y", max_y_, 0.0);
+  nh.param(group_name + "/min_z", min_z_, 0.0);
+  nh.param(group_name + "/max_z", max_z_, 0.0);
+  ROS_DEBUG_STREAM_NAMED("temp","From namespace " << nh.getNamespace() << " minx is " << min_x_);
 
   return configureJoint(jc);
 }
@@ -207,6 +218,20 @@ bool HRP2JSKNTConstraintSampler::configureJoint(const std::vector<kinematic_cons
   return true;
 }
 
+bool HRP2JSKNTConstraintSampler::displayBoundingBox()
+{
+  geometry_msgs::Point point1;
+  geometry_msgs::Point point2;
+  point1.x = max_x_;
+  point1.y = max_y_;
+  point1.z = max_z_;
+  point2.x = min_x_;
+  point2.y = min_y_;
+  point2.z = min_z_;
+
+  return visual_tools_->publishRectangle(point1, point2, moveit_visual_tools::TRANSLUCENT);
+}
+
 bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, const robot_state::RobotState & /* reference_state */,
                                         unsigned int max_attempts)
 {
@@ -219,58 +244,93 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
     return false;
   }
 
+  // Visualization helper TODO: disable this
+  if (verbose_ && !visual_tools_)
+  {
+    visual_tools_.reset(new moveit_visual_tools::VisualTools("/odom", "/hrp2_visual_markers", scene_->getRobotModel()));
+    visual_tools_->deleteAllMarkers();
+    displayBoundingBox();
+  }
+
   logWarn("%s: HRP2JSKNTConstraintSampler SAMPLING -----------------------------",sampler_name_.c_str());
 
-  for (std::size_t i = 0; i < max_attempts; ++i)
-  {
-    logInform("Sampling attempt number %d for group %s", i, jmg_->getName().c_str() );
+  const robot_model::JointModel *vjoint = jmg_->getJointModel("virtual_joint");
+  const robot_model::LinkModel *rfoot = jmg_->getLinkModel("RLEG_LINK5");
 
-    // TODO: 
-    // Sample only chosen leg
-    // Check if torso is within constraints
-    // Sample rest of body
-    // Check balance constraints
+ 
+  for (std::size_t attempt = 0; attempt < max_attempts; ++attempt)
+  {
+    if (verbose_)
+      logInform("Sampling attempt number %d for group %s", attempt, jmg_->getName().c_str() );
 
     // Calculate random position of robot
-    /*
-    if (!sampleJoints(robot_state))
+    /*    if (!sampleJoints(robot_state))
     {
       logError("Unable to sample joints");
       return false;
-    }
-    */    
+    } */
 
     // Generate random state
+    // TODO: make this only sample the leg, then later sample the rest of the robot
     robot_state.setToRandomPositions(jmg_);
 
-
-    // show in rviz
-    if (verbose_ && false)
+    /* show in rviz
+    if (verbose_)
     {
       visual_tools_->publishRobotState(robot_state);
       std::cout << "publishing from sampler " << std::endl;
       ros::Duration(2.0).sleep();
-    }
+      }*/
     
     // force update
     robot_state.updateStateWithFakeBase();
 
-    // show in rviz
-    if (verbose_ && false)
+    // Check if vjoint (torso) is within reasonable limits
+    const double* vjoint_positions = robot_state.getJointPositions(vjoint);
+    if (verbose_)
     {
-      visual_tools_->publishRobotState(robot_state);
-      std::cout << "publishing from sampler AFTER update" << std::endl;
-      ros::Duration(2.0).sleep();
+      std::cout << "Vjoint: " << std::endl;
+      std::cout << "  X: " << boost::format("%8.4f") % min_x_ << boost::format("%8.4f") % vjoint_positions[0] 
+                << boost::format("%8.4f") % max_x_ << std::endl;
+      std::cout << "  Y: " << boost::format("%8.4f") % min_y_ << boost::format("%8.4f") % vjoint_positions[1] 
+                << boost::format("%8.4f") % max_y_ << std::endl;
+      std::cout << "  Z: " << boost::format("%8.4f") % min_z_ << boost::format("%8.4f") % vjoint_positions[2] 
+                << boost::format("%8.4f") % max_z_ << std::endl;
+    }
+    //robot_state.getFakeBaseTransform().translation().x())
+    if (vjoint_positions[0] < min_x_ ||
+        vjoint_positions[0] > max_x_ ||
+        vjoint_positions[1] < min_y_ ||
+        vjoint_positions[1] > max_y_ ||
+        vjoint_positions[2] < min_z_ ||
+        vjoint_positions[2] > max_z_)
+    {
+      ROS_WARN_STREAM_NAMED("temp","Sample outside vjoint constraints ================================");
+      continue;
     }
 
-    // check if vjoint is within reasonable limits
-    
+    // Check if the right foot is above ground
+    if (robot_state.getGlobalLinkTransform(rfoot).translation().z() < 0)
+    {
+      ROS_WARN_STREAM_NAMED("temp","Sample outside rfoot ground constraint ================================");
+      continue;            
+    }
 
+    // TODO:  Sample rest of body
 
-    
+    // TODO: Check balance constraints
+
+    // show in rviz
+    if (verbose_)
+    {
+      visual_tools_->publishRobotState(robot_state);
+      //std::cout << "publishing from sampler valid configuration" << std::endl;
+      ros::Duration(1.0).sleep();
+    }    
 
     return true;
-  }
+  } // for attempts
+
   return false;
 }
 

@@ -886,14 +886,13 @@ public:
     robot_state->enableFakeBaseTransform(foot, start_leg_joint, default_foot_transform);
   }
 
-  void genRandPoseGrounded(int problems)
+  void genRandPoseGrounded(int problems, bool verbose)
   {
     robot_state_->setToDefaultValues();
 
     // Move robot to specific place on plane
-
-
-    fixRobotStateFoot(robot_state_, 1.0, 0.5);
+    //fixRobotStateFoot(robot_state_, 1.0, 0.5);
+    fixRobotStateFoot(robot_state_, 0.0, 0.0);
 
     // Show the lab as collision objects
     //jskLabCollisionEnvironment();
@@ -904,32 +903,28 @@ public:
     constraint_sampler_manager_loader_.reset(new constraint_sampler_manager_loader::ConstraintSamplerManagerLoader());
     constraint_samplers::ConstraintSamplerManagerPtr csm = constraint_sampler_manager_loader_->getConstraintSamplerManager();
     constraint_samplers::ConstraintSamplerPtr cs = csm->selectSampler(planning_scene_, planning_group_name_, constr);
+    cs->setVerbose(verbose);
 
-    ROS_INFO_STREAM_NAMED("temp","Checking constraint sampler");
     if (!cs)
     {
       ROS_ERROR_STREAM_NAMED("temp","No constraint sampler loaded");
+      exit(-1);
     }
     ROS_INFO_STREAM_NAMED("temp","Chosen constraint sampler: " << cs->getName() );
 
+    ros::Time start_time;
+    start_time = ros::Time::now();
 
-    // loop at 1 Hz
-    ros::Rate loop_rate(10); // larger is faster
-    for (int counter=0; counter < problems && ros::ok(); counter++)
+    for (int counter = 0; counter < problems && ros::ok(); counter++)
     {
-      if (!ros::ok())
-        return;
-
       // Reset
       //hideRobot();
       //ros::Duration(0.25).sleep();
 
       // Make random start state
       //setRandomValidState(robot_state_, joint_model_group_);      
-      int attempts = 1;
+      int attempts = 100;
       cs->sample(*robot_state_, *robot_state_, attempts);
-
-
 
       // Generate random stat
       //robot_model::JointModelGroup *whole_body_fixed_ = robot_model_->getJointModelGroup("whole_body_fixed");
@@ -938,20 +933,21 @@ public:
       //robot_state_->update(true);
       //robot_state_->updateStateWithFakeBase();
 
-
       // Show original random
       //visual_tools_->publishRobotState(robot_state_);
       //ros::Duration(1.0).sleep();
 
       // Display result
-      ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << counter);
-      visual_tools_->publishRobotState(robot_state_);
-      ros::Duration(0.5).sleep();
-
-
-      // let ROS send the message, then wait a while
-      loop_rate.sleep();
+      if (verbose)
+      {
+        ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << counter);
+        visual_tools_->publishRobotState(robot_state_);
+        ros::Duration(1.0).sleep();
+      }
     }
+
+    double duration = (ros::Time::now() - start_time).toSec();
+    ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds. Average sample time: " << (duration/double(problems)) << " s");
   }
 
   // Set every joint in the group to the same joint value
@@ -1720,7 +1716,7 @@ int main(int argc, char **argv)
           break;
         case 7:
           ROS_INFO_STREAM_NAMED("demos","7 - Generate completely random poses of robot, then transform robot to foot on ground");
-          client.genRandPoseGrounded(problems);
+          client.genRandPoseGrounded(problems, verbose);
           break;
         case 8:
           ROS_INFO_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");

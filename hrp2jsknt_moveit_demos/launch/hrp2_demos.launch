@@ -33,6 +33,8 @@
     <param name="constraint_samplers" value="hrp2jsknt_moveit_constraint_sampler/HRP2JSKNTConstraintSamplerAllocator"/>
 
     <rosparam command="load" file="$(find hrp2jsknt_moveit_config)/config/kinematics.yaml"/>
+
+    <rosparam command="load" file="$(find hrp2jsknt_moveit_plugins)/hrp2jsknt_moveit_constraint_sampler/config/bounds_estimate.yaml"/>
   </node>
 
 </launch>
