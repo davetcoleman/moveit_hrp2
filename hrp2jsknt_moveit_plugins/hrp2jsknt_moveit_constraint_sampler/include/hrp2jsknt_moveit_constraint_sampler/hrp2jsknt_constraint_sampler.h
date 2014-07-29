@@ -138,7 +138,7 @@ public:
    * \brief Debug function for showing the course-grain constraint enforcement of torso
    * \return true on success
    */
-  bool displayBoundingBox() const;
+  bool displayBoundingBox(const Eigen::Affine3d &translation = Eigen::Affine3d::Identity()) const;
 
   virtual bool sample(robot_state::RobotState &robot_state, const robot_state::RobotState &ks,
                       unsigned int max_attempts);
@@ -283,6 +283,9 @@ public:
   const robot_model::JointModelGroup* robot_joint_group_;
   hrl_kinematics::Kinematics::FootSupport support_mode_;
   tf::Vector3 normal_vector_;
+
+  // Verbose mode
+  geometry_msgs::Pose text_pose_;
 };
 
 

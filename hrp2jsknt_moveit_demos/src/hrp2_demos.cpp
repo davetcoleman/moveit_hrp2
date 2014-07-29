@@ -91,7 +91,6 @@ public:
   HRP2Demos(const std::string planning_group_name)
     : nh_("~")
     , walking_service_name_("/generate_walking_service")
-    , sleep_time_(0.5) // time to wait on ROS messages to clear
     , walking_client_loaded_(false)
     , robot_model_loader_(ROBOT_DESCRIPTION) // load the URDF
     , planning_group_name_(planning_group_name)
@@ -116,14 +115,11 @@ public:
     visual_tools_.reset(new moveit_visual_tools::VisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
     visual_tools_->loadRobotStatePub("/hrp2_demos");
     visual_tools_->loadMarkerPub();
-    visual_tools_->loadTrajectoryPub();
+    //visual_tools_->loadTrajectoryPub();
     visual_tools_->deleteAllMarkers(); // clear all old markers
 
-    // Used for clearing out robot state
-    createBlankState();
-
     // Allow time to startup
-    sleep_time_.sleep();
+    ros::Duration(0.1).sleep();
   }
 
   void loadPlanningPipeline()
@@ -138,6 +134,7 @@ public:
   // Use two IK solvers to find leg positions
   void genRandLegConfigurations()
   {
+    createBlankState(); // for hideRobot
     /* NOTES
        z min crouch is -0.38
        z max stand is 0
@@ -239,6 +236,7 @@ public:
   {
     setStateToGroupPose(goal_state_,  "reset_whole_body_fixed", joint_model_group_);
     setStateToGroupPose(robot_state_, "reset_whole_body_fixed", joint_model_group_);
+    createBlankState(); // for hideRobot
 
     // Generate random goal positions
     ros::Rate loop_rate(1);
@@ -566,6 +564,7 @@ public:
       // Generate random stat
       state->setToRandomPositions(jmg);
 
+      ROS_WARN_STREAM_NAMED("temp","calling state updaet in setRandomValidState");
       state->update(true); // prevent dirty transforms
 
       // Test for collision
@@ -592,6 +591,8 @@ public:
   // Send to walking server to generate footsteps
   void genRandWalking()
   {
+    createBlankState(); // for hide robot
+
     // Set to crouching position
     setStateToGroupPose(goal_state_,  "reset_whole_body", joint_model_group_);
     setStateToGroupPose(robot_state_, "reset_whole_body", joint_model_group_);
@@ -703,6 +704,8 @@ public:
   // Plan robot moving to crouching position
   void genCrouching()
   {
+    createBlankState(); // for hide robot
+
     robot_state_->setToDefaultValues();
     goal_state_->setToDefaultValues();
 
@@ -733,7 +736,7 @@ public:
       */
       visual_tools_->publishTrajectoryPath(response.trajectory);
       // Allow time to send trajectory
-      sleep_time_.sleep();
+      ros::Duration(0.1).sleep();
     }
     else
     {
@@ -741,52 +744,6 @@ public:
     }
 
     ros::Duration(1.0).sleep();
-  }
-
-  void genRandPoseGroundedZ() // grounds just along the z axis
-  {
-    robot_state_->setToDefaultValues();
-
-    // loop at 1 Hz
-    ros::Rate loop_rate(1);
-
-    // Get default z offset of foot to world coordinate
-    double z_default_foot_transform = robot_state_->getGlobalLinkTransform("LLEG_LINK5").translation().z();
-
-    for (int counter=0; counter<10 && ros::ok(); counter++)
-    {
-      // Move the virtual joint slightly
-      setStateInPlace(robot_state_);
-
-      // Reset
-      hideRobot();
-      ros::Duration(0.25).sleep();
-
-      // Show original random
-      visual_tools_->publishRobotState(robot_state_);
-      ros::Duration(1.0).sleep();
-
-      // Move the virtual joint such that the lowest foot touches the ground
-      Eigen::Affine3d virtual_joint_transform  = robot_state_->getJointTransform("virtual_joint");
-
-      double z_lowest_foot = std::min(
-                                      robot_state_->getGlobalLinkTransform("LLEG_LINK5").translation().z(),
-                                      robot_state_->getGlobalLinkTransform("RLEG_LINK5").translation().z());
-
-      // Create the transform for moving the virtual joint
-      const Eigen::Affine3d down_transform(Eigen::Translation3d(0,0,-z_lowest_foot+z_default_foot_transform));
-
-      // Perform the transform and apply back to robot state
-      virtual_joint_transform = down_transform * virtual_joint_transform;
-      robot_state_->setJointPositions("virtual_joint", virtual_joint_transform);
-
-      // Display result
-      visual_tools_->publishRobotState(robot_state_);
-      ros::Duration(2.0).sleep();
-
-      // let ROS send the message, then wait a while
-      loop_rate.sleep();
-    }
   }
 
   bool loadPlanningSceneMonitor()
@@ -901,11 +858,50 @@ public:
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
-    fixRobotStateFoot(robot_state_, 0.0, 0.0);
+    fixRobotStateFoot(robot_state_, 1.5, 2.0);
+    //fixRobotStateFoot(robot_state_, 0.0, 0.0);
 
     // Show the lab as collision objects
-    //jskLabCollisionEnvironment();
+    jskLabCollisionEnvironment();
 
+    /*
+    // Make random start state
+    robot_state_->setToRandomPositions(joint_model_group_);
+    robot_state_->updateStateWithFakeBase(); // force update
+    {
+      ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot ");
+      visual_tools_->publishRobotState(robot_state_);
+    }
+
+    // Benchmark time
+    ros::Time start_time2;
+    start_time2 = ros::Time::now();
+    
+    for (std::size_t i = 0; i < problems; ++i)
+    {
+      if (!ros::ok())
+        return;
+
+      // Make random start state
+      robot_state_->setToRandomPositions(joint_model_group_);
+
+      // force update
+      robot_state_->updateStateWithFakeBase();      
+
+      if (verbose)
+      {
+        ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot ");
+        visual_tools_->publishRobotState(robot_state_);
+        ros::Duration(1).sleep();
+      }
+    }
+
+    // Benchmark time
+    double duration2 = (ros::Time::now() - start_time2).toSec();
+    ROS_INFO_STREAM_NAMED("","Total time: " << duration2 << " seconds averaging " << duration2/problems << " seconds per rand sample");
+    exit(0);
+    */
+    
     // Create a constraint sampler for random poses
     moveit_msgs::Constraints constr;
     constraint_sampler_manager_loader::ConstraintSamplerManagerLoaderPtr constraint_sampler_manager_loader_;
@@ -926,10 +922,6 @@ public:
 
     for (int problem_id = 0; problem_id < problems && ros::ok(); problem_id++)
     {
-      // Reset
-      //hideRobot();
-      //ros::Duration(0.25).sleep();
-
       // Make random start state
       //setRandomValidState(robot_state_, joint_model_group_);      
      
@@ -939,17 +931,18 @@ public:
         ROS_INFO_STREAM_NAMED("temp","Found a valid sample " << problem_id);
         std::cout << std::endl;
         
-        if (verbose)
+        if (verbose || true)
         {
           ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << problem_id);
           visual_tools_->publishRobotState(robot_state_);
-          ros::Duration(2.0).sleep();
+          if (verbose)
+            ros::Duration(2.0).sleep();
         }
       }
       else
       {
-        ROS_FATAL_STREAM_NAMED("","Did not find a valid sample");
-        exit(-1);
+        ROS_FATAL_STREAM_NAMED("","Did not find a valid sample. Shutting down.");
+        exit(0);
       }
     }
 
@@ -1558,16 +1551,19 @@ public:
 
   void createBlankState()
   {
-    // Copy the robot state then move it way into the distance
-    blank_state_.reset(new robot_state::RobotState(*robot_state_));
+    if (!blank_state_) // load once
+    {
+      // Copy the robot state then move it way into the distance
+      blank_state_.reset(new robot_state::RobotState(*robot_state_));
 
-    double x = blank_state_->getVariablePosition("virtual_joint/trans_x");
-    x += 20;
-    blank_state_->setVariablePosition("virtual_joint/trans_x",x);
+      double x = blank_state_->getVariablePosition("virtual_joint/trans_x");
+      x += 20;
+      blank_state_->setVariablePosition("virtual_joint/trans_x",x);
 
-    double y = blank_state_->getVariablePosition("virtual_joint/trans_y");
-    y += 20;
-    blank_state_->setVariablePosition("virtual_joint/trans_y",y);
+      double y = blank_state_->getVariablePosition("virtual_joint/trans_y");
+      y += 20;
+      blank_state_->setVariablePosition("virtual_joint/trans_y",y);
+    }
   }
 
   void printVirtualJointPosition(const robot_state::RobotStatePtr &robot_state)
@@ -1612,8 +1608,6 @@ private:
 
   // For visualizing things in rviz
   moveit_visual_tools::VisualToolsPtr visual_tools_;
-
-  ros::Duration sleep_time_;
 
   bool walking_client_loaded_; // only load when we need it
 
@@ -1728,7 +1722,7 @@ int main(int argc, char **argv)
           client.genRandMoveItPlan();
           break;
         case 7:
-          ROS_INFO_STREAM_NAMED("demos","7 - Generate completely random poses of robot, then transform robot to foot on ground");
+          ROS_INFO_STREAM_NAMED("demos","7 - Sample single-foot-fixed poses of robot");
           client.genRandPoseGrounded(runs, problems, verbose);
           break;
         case 8:
