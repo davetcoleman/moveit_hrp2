@@ -935,8 +935,8 @@ public:
         {
           ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << problem_id);
           visual_tools_->publishRobotState(robot_state_);
-          if (verbose)
-            ros::Duration(2.0).sleep();
+          if (verbose || true)
+            ros::Duration(10.0).sleep();
         }
       }
       else
