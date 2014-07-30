@@ -288,6 +288,7 @@ public:
   geometry_msgs::Pose text_pose_;
 };
 
+MOVEIT_CLASS_FORWARD(HRP2JSKNTConstraintSampler);
 
 // define the sampler allocator plugin interface
 class HRP2JSKNTConstraintSamplerAllocator : public constraint_samplers::ConstraintSamplerAllocator

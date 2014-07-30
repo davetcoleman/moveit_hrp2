@@ -314,17 +314,20 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
     if (!ros::ok())
       return false;
 
+    // Decide how to sample the joints
+    bool use_constraint_sampling = false;
     // Generate simple movement states
-    /*if (false)
+    if (false)
     {
       double lleg_position[1];
       lleg_position[0] = robot_state.getJointPositions("LLEG_JOINT1")[0] + 0.01;
       robot_state.setJointPositions("LLEG_JOINT1", lleg_position);
-    }*/
 
-    // Decide how to sample the joints
-    bool use_constraint_sampling = false;
-    if (bounds_.size() > 0)
+      // Update with leg fixed
+      robot_state.updateStateWithFakeBase(); 
+      use_constraint_sampling = true;      
+    }
+    else if (bounds_.size() > 0)
     {
       ROS_INFO_STREAM_NAMED("temp","Sampling joints using joint constraints");
       use_constraint_sampling = true;
@@ -451,6 +454,47 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
       visual_tools_->publishMarker(com_marker);
     }
 
+    if (verbose_ || true)
+    {
+      visualization_msgs::Marker com_marker = test_stability_.getCOMMarker();
+      // Translate to world frame
+      com_marker.pose =
+        moveit_visual_tools::VisualTools::convertPose(moveit_visual_tools::VisualTools::convertPose(com_marker.pose) *
+                                                      robot_state.getGlobalLinkTransform(com_marker.header.frame_id));
+
+      // Change frame name to world fame
+      com_marker.header.frame_id = robot_state.getRobotModel()->getModelFrame(); // odom
+      com_marker.ns = "COM";
+      //std::cout << "new marker: ------------- \n " << com_marker << std::endl;
+      visual_tools_->publishMarker(com_marker);
+    }
+
+    // Change polygon points to world frame
+    if (verbose_ || true)
+    {
+      const geometry_msgs::PolygonStamped polygon_msg = test_stability_.getSupportPolygon();
+
+      std::vector<geometry_msgs::Point> points;
+      for (std::size_t i = 0; i < polygon_msg.polygon.points.size(); ++i)
+      {
+        Eigen::Affine3d temp_pose = moveit_visual_tools::VisualTools::convertPoint32ToPose(polygon_msg.polygon.points[i]);
+
+        //temp_pose.translation().z() = temp_pose.translation().z() - 0.1;
+        robot_state.update(true);
+        //robot_state.printTransform(robot_state.getGlobalLinkTransform("BODY"));
+        temp_pose = temp_pose * robot_state.getGlobalLinkTransform("BODY");
+
+        points.push_back( visual_tools_->convertPose(temp_pose).position );
+      }
+      points.push_back(points.front()); // connect first and last points for last line
+
+      visual_tools_->publishPath(points);
+    }
+
+
+
+
+
     if (!stable)
     {
       if (verbose_)
@@ -476,44 +520,6 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
       }
       continue;
     }
-
-    if (verbose_ && false)
-    {
-      visualization_msgs::Marker com_marker = test_stability_.getCOMMarker();
-      // Translate to world frame
-      com_marker.pose =
-        moveit_visual_tools::VisualTools::convertPose(moveit_visual_tools::VisualTools::convertPose(com_marker.pose) *
-                                                      robot_state.getGlobalLinkTransform(com_marker.header.frame_id));
-
-      // Change frame name to world fame
-      com_marker.header.frame_id = robot_state.getRobotModel()->getModelFrame(); // odom
-      com_marker.ns = "COM";
-      //std::cout << "new marker: ------------- \n " << com_marker << std::endl;
-      visual_tools_->publishMarker(com_marker);
-    }
-
-    // Change polygon points to world frame
-    if (verbose_ && false)
-    {
-      const geometry_msgs::PolygonStamped polygon_msg = test_stability_.getSupportPolygon();
-
-      std::vector<geometry_msgs::Point> points;
-      for (std::size_t i = 0; i < polygon_msg.polygon.points.size(); ++i)
-      {
-        Eigen::Affine3d temp_pose = moveit_visual_tools::VisualTools::convertPoint32ToPose(polygon_msg.polygon.points[i]);
-
-        //temp_pose.translation().z() = temp_pose.translation().z() - 0.1;
-        robot_state.update(true);
-        //robot_state.printTransform(robot_state.getGlobalLinkTransform("BODY"));
-        temp_pose = temp_pose * robot_state.getGlobalLinkTransform("BODY");
-
-        points.push_back( visual_tools_->convertPose(temp_pose).position );
-      }
-      points.push_back(points.front()); // connect first and last points for last line
-
-      visual_tools_->publishPath(points);
-    }
-
 
     // Find min/max
     if (false)

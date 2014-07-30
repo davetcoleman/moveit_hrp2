@@ -330,6 +330,20 @@ public:
     }
   }
 
+  bool testFeasibility(const robot_state::RobotState& robot_state, bool verbose)
+  {
+    std::cout << "TEST FEASIBILITY CALLED!!!!! " << constraint_sampler_->getName() << std::endl;
+    /*
+    hrp2jsknt_moveit_constraint_sampler::HRP2JSKNTConstraintSamplerPtr hrp2constraint = 
+      boost::dynamic_pointer_cast<hrp2jsknt_moveit_constraint_sampler::HRP2JSKNTConstraintSampler>(constraint_sampler_);
+    if (!hrp2constraint)
+    {
+      ROS_ERROR_STREAM_NAMED("temp","No constraint sampler available for humanoid");
+    }
+    */
+    return true;
+  }
+
   // Plan with MoveIt + Lightning for different arm positions
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=3 group:=left_arm
   void genLightningPlans(int problems, bool verbose)
@@ -343,7 +357,7 @@ public:
   void genLightningPlans(bool verbose)
   {
     // Show the lab as collision objects
-    jskLabCollisionEnvironment();
+    //jskLabCollisionEnvironment();
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
@@ -389,6 +403,18 @@ public:
     createBlankState(); // for hideRobot
     hideRobot();
 
+
+
+
+    // Testing: set custom validity checker
+    std::cout << "SETTING CUSTOM VALIDITY CHECKER " << std::endl;
+
+    //typedef boost::function<bool(const robot_state::RobotState&, bool)> StateFeasibilityFn;
+    bool verbose_feasibility = true;
+    planning_scene_->setStateFeasibilityPredicate(boost::bind(&HRP2Demos::testFeasibility, this, _1, _2));
+
+
+    // Create plannign request
     moveit_msgs::MotionPlanResponse response;
 
     // Create motion planning request
@@ -885,7 +911,7 @@ public:
     //fixRobotStateFoot(robot_state_, 0.0, 0.0);
 
     // Show the lab as collision objects
-    jskLabCollisionEnvironment();
+    //jskLabCollisionEnvironment();
 
     /*
     // Make random start state
@@ -929,6 +955,9 @@ public:
     // Create a constraint sampler for random poses
     loadConstraintSampler(verbose);
 
+    // Load a file to save the robot states to
+    std::ofstream ostream("/home/dave/ros/stable_robot_states.dat");
+
     ros::Time start_time;
     start_time = ros::Time::now();
 
@@ -947,9 +976,22 @@ public:
         {
           ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << problem_id);
           visual_tools_->publishRobotState(robot_state_);
-          if (verbose || true)
-            ros::Duration(10.0).sleep();
+          if (verbose)
+            ros::Duration(1.0).sleep();
         }
+
+        // Save to file
+        // DESIRED ORDER FOR JSK: RLEG_JOINT0  LLEG_JOINT0  CHEST_JOINT0  HEAD_JOINT0  RARM_JOINT0  LARM_JOINT0        
+        std::vector< std::string > joint_groups;
+        joint_groups.push_back("right_leg");
+        joint_groups.push_back("left_leg");
+        joint_groups.push_back("torso");
+        joint_groups.push_back("head");
+        joint_groups.push_back("right_arm");
+        joint_groups.push_back("left_arm");
+        joint_groups.push_back("left_hand");
+        joint_groups.push_back("right_hand");
+        robotStateToStream(*robot_state_, ostream, joint_groups, problem_id == 0, " ");
       }
       else
       {
@@ -960,6 +1002,8 @@ public:
 
     double duration = (ros::Time::now() - start_time).toSec();
     ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds. Average sample time: " << (duration/double(problems)) << " s");
+
+    ostream.close();
   }
 
   // Set every joint in the group to the same joint value
