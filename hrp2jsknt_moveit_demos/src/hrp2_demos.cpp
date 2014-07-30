@@ -343,30 +343,51 @@ public:
   void genLightningPlans(bool verbose)
   {
     // Show the lab as collision objects
-    //jskLabCollisionEnvironment();
+    jskLabCollisionEnvironment();
 
     // Move robot to specific place on plane
-    fixRobotStateFoot(robot_state_, 1.0, 0.5);
-    fixRobotStateFoot(goal_state_, 1.0, 0.5);
+    //fixRobotStateFoot(robot_state_, 1.0, 0.5);
+    //fixRobotStateFoot(goal_state_, 1.0, 0.5);
 
-    // Make random goal state
-    if (!setRandomValidState(goal_state_, joint_model_group_))
+    // Create a constraint sampler for random poses
+    //loadConstraintSampler(verbose);
+    loadConstraintSampler(false);
+
+    int attempts = 10000;
+    if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
+    {
+      ROS_ERROR_STREAM_NAMED("temp","Unable to find valid start state");
       return;
+    }
+    if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
+    {
+      ROS_ERROR_STREAM_NAMED("temp","Unable to find valid goal state");
+      return;
+    }
+    
+    // Make random goal state
+    //if (!setRandomValidState(goal_state_, joint_model_group_))
+    //  return;
     // Make random start state
     //if (!setRandomValidState(robot_state_, joint_model_group_))
     //  return;
 
-    robot_state_->update(true);
+    robot_state_->updateStateWithFakeBase();
+    robot_state_->updateStateWithFakeBase();
+    //robot_state_->update(true);
     //goal_state_->update(true);
 
     // Visualize
     visual_tools_->publishRobotState(robot_state_);
     std::cout << "Visualizing robot state " << std::endl;
-    ros::Duration(2).sleep();
+    ros::Duration(1).sleep();
 
     visual_tools_->publishRobotState(goal_state_);
     std::cout << "Visualizing goal state " << std::endl;
-    ros::Duration(2).sleep();
+    ros::Duration(1).sleep();
+
+    createBlankState(); // for hideRobot
+    hideRobot();
 
     moveit_msgs::MotionPlanResponse response;
 
@@ -564,8 +585,8 @@ public:
       // Generate random stat
       state->setToRandomPositions(jmg);
 
-      ROS_WARN_STREAM_NAMED("temp","calling state updaet in setRandomValidState");
-      state->update(true); // prevent dirty transforms
+      state->updateStateWithFakeBase();
+      //state->update(true); // prevent dirty transforms
 
       // Test for collision
       if (planning_scene_->isStateValid(*state, "", false))
@@ -826,6 +847,8 @@ public:
 
   void fixRobotStateFoot(robot_state::RobotStatePtr &robot_state, double x, double y)
   {
+    return; // this is now hard coded in robot_state!
+
     robot_state->setToDefaultValues();
 
     // Enable the robot state to have a foot base
@@ -902,20 +925,9 @@ public:
     exit(0);
     */
     
-    // Create a constraint sampler for random poses
-    moveit_msgs::Constraints constr;
-    constraint_sampler_manager_loader::ConstraintSamplerManagerLoaderPtr constraint_sampler_manager_loader_;
-    constraint_sampler_manager_loader_.reset(new constraint_sampler_manager_loader::ConstraintSamplerManagerLoader());
-    constraint_samplers::ConstraintSamplerManagerPtr csm = constraint_sampler_manager_loader_->getConstraintSamplerManager();
-    constraint_samplers::ConstraintSamplerPtr cs = csm->selectSampler(planning_scene_, planning_group_name_, constr);
-    cs->setVerbose(verbose);
 
-    if (!cs)
-    {
-      ROS_ERROR_STREAM_NAMED("temp","No constraint sampler loaded");
-      exit(-1);
-    }
-    ROS_INFO_STREAM_NAMED("temp","Chosen constraint sampler: " << cs->getName() );
+    // Create a constraint sampler for random poses
+    loadConstraintSampler(verbose);
 
     ros::Time start_time;
     start_time = ros::Time::now();
@@ -926,7 +938,7 @@ public:
       //setRandomValidState(robot_state_, joint_model_group_);      
      
       // Display result
-      if (cs->sample(*robot_state_, *robot_state_, attempts))
+      if (constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
       {
         ROS_INFO_STREAM_NAMED("temp","Found a valid sample " << problem_id);
         std::cout << std::endl;
@@ -945,8 +957,6 @@ public:
         exit(0);
       }
     }
-
-    cs->getName();
 
     double duration = (ros::Time::now() - start_time).toSec();
     ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds. Average sample time: " << (duration/double(problems)) << " s");
@@ -1580,6 +1590,24 @@ public:
     std::cout << "Z: " << positions[5] << std::endl;
     std::cout << "W: " << positions[6] << std::endl;
   }
+  
+  void loadConstraintSampler(bool verbose)
+  {
+    // Create a constraint sampler for random poses
+    moveit_msgs::Constraints constr;
+    constraint_sampler_manager_loader::ConstraintSamplerManagerLoaderPtr constraint_sampler_manager_loader_;
+    constraint_sampler_manager_loader_.reset(new constraint_sampler_manager_loader::ConstraintSamplerManagerLoader());
+    constraint_samplers::ConstraintSamplerManagerPtr csm = constraint_sampler_manager_loader_->getConstraintSamplerManager();
+    constraint_sampler_ = csm->selectSampler(planning_scene_, planning_group_name_, constr);    
+    constraint_sampler_->setVerbose(verbose);
+
+    if (!constraint_sampler_)
+    {
+      ROS_ERROR_STREAM_NAMED("temp","No constraint sampler loaded");
+      exit(-1);
+    }
+    ROS_INFO_STREAM_NAMED("temp","Chosen constraint sampler: " << constraint_sampler_->getName() );
+  }
 
 private:
 
@@ -1616,6 +1644,9 @@ private:
 
   // Optional monitor to communicate with Rviz
   planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
+
+  // Constraint sampler
+  constraint_samplers::ConstraintSamplerPtr constraint_sampler_;
 
 }; // class
 
