@@ -47,8 +47,6 @@ namespace hrp2jsknt_moveit_constraint_sampler
 {
 bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &constr)
 {
-  //verbose_ = true; // TODO temp
-
   moveit_msgs::Constraints constraints = constr; // copy to non-const
 
   logError("%s: CONFIGURE HRP2JSKNT CONSTRAINT SAMPLER", sampler_name_.c_str());
@@ -100,44 +98,17 @@ bool HRP2JSKNTConstraintSampler::configure(const moveit_msgs::Constraints &const
     orientation_constraint_->configure(constraints.orientation_constraints[0], scene_->getTransforms());
   }
 
-  // Load the torso (vjoint) bounds from yaml file
-  ros::NodeHandle nh("~");
-  static const std::string group_name = "hrp2jsknt_torso";
-  nh.param(group_name + "/min_x", min_x_, 0.0);
-  nh.param(group_name + "/max_x", max_x_, 0.0);
-  nh.param(group_name + "/min_y", min_y_, 0.0);
-  nh.param(group_name + "/max_y", max_y_, 0.0);
-  nh.param(group_name + "/min_z", min_z_, 0.0);
-  nh.param(group_name + "/max_z", max_z_, 0.0);
-  // Add padding to all limits just in case
-  const double vjoint_limit_padding = 0.1;
-  min_x_ += vjoint_limit_padding;
-  max_x_ += vjoint_limit_padding;
-  min_y_ += vjoint_limit_padding;
-  max_y_ += vjoint_limit_padding;
-  min_z_ += vjoint_limit_padding;
-  max_z_ += vjoint_limit_padding;
+  // Load visual tools
+  visual_tools_.reset(new moveit_visual_tools::VisualTools("/odom", "/hrp2_visual_markers", scene_->getRobotModel()));  
+  visual_tools_->loadRobotStatePub("/hrp2_state_sampler");
+  
+  // Configure stability checker
+  humanoid_stability_.reset(new moveit_humanoid_stability::HumanoidStability(verbose_, scene_->getCurrentState(), visual_tools_));
 
-  // Get the offset between the foot and the torso to allow correct positioning of bounding box
-  moveit::core::RobotState temp_state(scene_->getCurrentState());
-  temp_state.setToDefaultValues();
-  left_foot_to_torso_ = temp_state.getGlobalLinkTransform("LLEG_LINK5");
-
-  // Move the x & y bounds over from foot frame of reference to torso frame of reference. z is always w.r.t. ground (0)
-  max_x_ -= left_foot_to_torso_.translation().x();
-  max_y_ -= left_foot_to_torso_.translation().y();
-  min_x_ -= left_foot_to_torso_.translation().x();
-  min_y_ -= left_foot_to_torso_.translation().y();
-
-  // Setup HRL Kinematics Balance Constraint
-  robot_joint_group_ = scene_->getRobotModel()->getJointModelGroup("robot_joints");
-    //hrl_kinematics::Kinematics::FootSupport support_mode_ = hrl_kinematics::Kinematics::SUPPORT_DOUBLE;
-
-  for (std::size_t i = 0; i < robot_joint_group_->getVariableCount(); ++i)
-  {
-    // Intitialize empty
-    joint_positions_map_.insert(std::make_pair(robot_joint_group_->getJointModels()[i]->getName(), 0));
-  }
+  // Verbose mode text display setting
+  text_pose_.position.x = scene_->getCurrentState().getFakeBaseTransform().translation().x();
+  text_pose_.position.y = scene_->getCurrentState().getFakeBaseTransform().translation().y();
+  text_pose_.position.z = scene_->getCurrentState().getFakeBaseTransform().translation().z() + 2;
 
   return configureJoint(jc);
 }
@@ -154,12 +125,12 @@ bool HRP2JSKNTConstraintSampler::configureJoint(const std::vector<kinematic_cons
 
   if (jc.empty())
   {
-    sampler_name_ = "NoConstraints";
+    sampler_name_ = "NO_Joint_Constraints";
     logError("No joint constraints passed to joint constraint sampler 2");
     //return false;
   }
   else
-    sampler_name_ = "hrp2jsk_constraint_sampler";
+    sampler_name_ = "HAS_Joint_Constraints";
 
   // find and keep the constraints that operate on the group we sample
   // also keep bounds for joints for convenience
@@ -246,26 +217,6 @@ bool HRP2JSKNTConstraintSampler::configureJoint(const std::vector<kinematic_cons
   return true;
 }
 
-bool HRP2JSKNTConstraintSampler::displayBoundingBox(const Eigen::Affine3d &translation) const
-{
-  if (!visual_tools_)
-  {
-    ROS_WARN_STREAM_NAMED("temp","visual tools not loaded");
-    return false;
-  }
-
-  geometry_msgs::Point point1;
-  geometry_msgs::Point point2;
-  point1.x = max_x_ + translation.translation().x();
-  point1.y = max_y_ + translation.translation().y();
-  point1.z = max_z_ + translation.translation().z();
-  point2.x = min_x_ + translation.translation().x();
-  point2.y = min_y_ + translation.translation().y();
-  point2.z = min_z_ + translation.translation().z();
-
-  return visual_tools_->publishRectangle(point1, point2, moveit_visual_tools::TRANSLUCENT);
-}
-
 bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, const robot_state::RobotState & /* reference_state */,
                                         unsigned int max_attempts)
 {
@@ -278,22 +229,6 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
     return false;
   }
 
-  // Visualization helper TODO: disable this
-  if (!visual_tools_)
-  {
-    visual_tools_.reset(new moveit_visual_tools::VisualTools("/odom", "/hrp2_visual_markers", scene_->getRobotModel()));
-    visual_tools_->loadRobotStatePub("/hrp2_state_sampler");
-    visual_tools_->deleteAllMarkers();
-
-    if (verbose_)
-    {
-      displayBoundingBox();
-      text_pose_.position.x = robot_state.getFakeBaseTransform().translation().x();
-      text_pose_.position.y = robot_state.getFakeBaseTransform().translation().y();
-      text_pose_.position.z = robot_state.getFakeBaseTransform().translation().z() + 2;
-    }
-  }
-
   logWarn("%s: HRP2JSKNTConstraintSampler SAMPLING -----------------------------",sampler_name_.c_str());
 
   //const robot_model::JointModel *vjoint = jmg_->getJointModel("virtual_joint");
@@ -303,8 +238,7 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
   const robot_model::JointModelGroup *whole_body_minus_left_leg = robot_state.getRobotModel()->getJointModelGroup("whole_body_minus_left_leg");
   const robot_model::JointModelGroup *left_leg = robot_state.getRobotModel()->getJointModelGroup("left_leg");
 
-  bool stable;
-  tf::Point com;
+  max_attempts = 100000; // TODO this might be a bad hack
 
   for (std::size_t attempt = 0; attempt < max_attempts; ++attempt)
   {
@@ -313,6 +247,9 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
 
     if (!ros::ok())
       return false;
+
+    if (verbose_)
+      visual_tools_->deleteAllMarkers();
 
     // Decide how to sample the joints
     bool use_constraint_sampling = false;
@@ -324,8 +261,8 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
       robot_state.setJointPositions("LLEG_JOINT1", lleg_position);
 
       // Update with leg fixed
-      robot_state.updateStateWithFakeBase(); 
-      use_constraint_sampling = true;      
+      robot_state.updateStateWithFakeBase();
+      use_constraint_sampling = true;
     }
     else if (bounds_.size() > 0)
     {
@@ -337,11 +274,11 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
       if (!sampleJoints(robot_state))
       {
         logError("Unable to sample joints");
-        return false;      
+        return false;
       }
 
       // Update with leg fixed
-      robot_state.updateStateWithFakeBase(); 
+      robot_state.updateStateWithFakeBase();
     }
     else
     {
@@ -350,58 +287,34 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
       robot_state.setToRandomPositions(left_leg);
 
       // Update only the virtual joint and the leg we just updated
-      robot_state.updateSingleChainWithFakeBase(); 
+      robot_state.updateSingleChainWithFakeBase();
     }
-    
+
 
     if (verbose_)
     {
       visual_tools_->publishRobotState(robot_state);
     }
 
-    // Check if vjoint (torso) is within reasonable limits
-    const double* vjoint_positions = robot_state.getJointPositions(vjoint);
+
+    if (!humanoid_stability_->isApproximateValidBase(robot_state))
     {
       if (verbose_)
       {
-        /*
-        std::cout << "Vjoint: " << std::endl;
-        std::cout << "  X: " << boost::format("%8.4f") % min_x_ << boost::format("%8.4f") % vjoint_positions[0]
-                  << boost::format("%8.4f") % max_x_ << std::endl;
-        std::cout << "  Y: " << boost::format("%8.4f") % min_y_ << boost::format("%8.4f") % vjoint_positions[1]
-                  << boost::format("%8.4f") % max_y_ << std::endl;
-        std::cout << "  Z: " << boost::format("%8.4f") % min_z_ << boost::format("%8.4f") % vjoint_positions[2]
-                  << boost::format("%8.4f") % max_z_ << std::endl;
-        */
-        visual_tools_->deleteAllMarkers();
-        displayBoundingBox(robot_state.getFakeBaseTransform());
+        ROS_WARN_STREAM_NAMED("temp","Sample outside VIRTUAL JOINT constraints");
+        visual_tools_->publishText(text_pose_, "OUTSIDE virtual joint bounding box", moveit_visual_tools::RED, moveit_visual_tools::LARGE);
+        ros::Duration(1.1).sleep();
       }
-      
-      if (vjoint_positions[0] < min_x_ + robot_state.getFakeBaseTransform().translation().x() ||
-          vjoint_positions[0] > max_x_ + robot_state.getFakeBaseTransform().translation().x() ||
-          vjoint_positions[1] < min_y_ + robot_state.getFakeBaseTransform().translation().y() ||
-          vjoint_positions[1] > max_y_ + robot_state.getFakeBaseTransform().translation().y() ||
-          vjoint_positions[2] < min_z_ + robot_state.getFakeBaseTransform().translation().z() ||
-          vjoint_positions[2] > max_z_ + robot_state.getFakeBaseTransform().translation().z() )
-      {
-        if (verbose_)
-        {
-          ROS_WARN_STREAM_NAMED("temp","Sample outside VIRTUAL JOINT constraints");
-          visual_tools_->publishText(text_pose_, "OUTSIDE virtual joint bounding box", moveit_visual_tools::RED, moveit_visual_tools::LARGE);
-          ros::Duration(1.1).sleep();
-        }
 
-        continue; // stop checking
-      }
-      else // validp
-      {
-        if (verbose_)
-        {
-          visual_tools_->publishText(text_pose_, "Within virtual joint bounding box", moveit_visual_tools::WHITE, moveit_visual_tools::LARGE);
-          visual_tools_->publishRobotState(robot_state);
-          ros::Duration(1.1).sleep();
-        }
-      }
+      continue; // stop checking
+    }
+
+    // Is Valid
+    if (verbose_)
+    {
+      visual_tools_->publishText(text_pose_, "Within virtual joint bounding box", moveit_visual_tools::WHITE, moveit_visual_tools::LARGE);
+      visual_tools_->publishRobotState(robot_state);
+      ros::Duration(1.1).sleep();
     }
 
     if (!use_constraint_sampling)
@@ -410,14 +323,14 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
       robot_state.setToRandomPositions(whole_body_minus_left_leg);
       robot_state.update(true); // update entire robot using previously computed virtual joint tranform
     }
-    
+
     if (verbose_)
     {
       visual_tools_->publishRobotState(robot_state);
     }
-  
+
     // Check if the right foot is above ground
-    if (robot_state.getGlobalLinkTransform(rfoot).translation().z() < 0)
+    if (!humanoid_stability_->isApproximateValidFoot(robot_state))
     {
       if (verbose_)
       {
@@ -430,76 +343,11 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
     }
 
     // Check COM balance constraints --------------------------------------------------------------
-    for (std::size_t i = 0; i < robot_joint_group_->getVariableCount(); ++i)
-    {
-      joint_positions_map_[robot_joint_group_->getJointModels()[i]->getName()] = 
-        robot_state.getJointPositions(robot_joint_group_->getJointModels()[i])[0];
-    }
-
-    stable = test_stability_.isPoseStable(joint_positions_map_, support_mode_, normal_vector_);
-    com = test_stability_.getCOM();
-
-    // Publish visualization to Rviz
-    if (verbose_ )
-    {
-      visualization_msgs::Marker com_marker = test_stability_.getCOMMarker();
-      // Translate to world frame
-      com_marker.pose =
-        moveit_visual_tools::VisualTools::convertPose(moveit_visual_tools::VisualTools::convertPose(com_marker.pose) *
-                                                      robot_state.getGlobalLinkTransform(com_marker.header.frame_id));
-
-      // Change frame name to world fame
-      com_marker.header.frame_id = robot_state.getRobotModel()->getModelFrame(); // odom
-      com_marker.ns = "COM";
-      visual_tools_->publishMarker(com_marker);
-    }
-
-    if (verbose_ || true)
-    {
-      visualization_msgs::Marker com_marker = test_stability_.getCOMMarker();
-      // Translate to world frame
-      com_marker.pose =
-        moveit_visual_tools::VisualTools::convertPose(moveit_visual_tools::VisualTools::convertPose(com_marker.pose) *
-                                                      robot_state.getGlobalLinkTransform(com_marker.header.frame_id));
-
-      // Change frame name to world fame
-      com_marker.header.frame_id = robot_state.getRobotModel()->getModelFrame(); // odom
-      com_marker.ns = "COM";
-      //std::cout << "new marker: ------------- \n " << com_marker << std::endl;
-      visual_tools_->publishMarker(com_marker);
-    }
-
-    // Change polygon points to world frame
-    if (verbose_ || true)
-    {
-      const geometry_msgs::PolygonStamped polygon_msg = test_stability_.getSupportPolygon();
-
-      std::vector<geometry_msgs::Point> points;
-      for (std::size_t i = 0; i < polygon_msg.polygon.points.size(); ++i)
-      {
-        Eigen::Affine3d temp_pose = moveit_visual_tools::VisualTools::convertPoint32ToPose(polygon_msg.polygon.points[i]);
-
-        //temp_pose.translation().z() = temp_pose.translation().z() - 0.1;
-        robot_state.update(true);
-        //robot_state.printTransform(robot_state.getGlobalLinkTransform("BODY"));
-        temp_pose = temp_pose * robot_state.getGlobalLinkTransform("BODY");
-
-        points.push_back( visual_tools_->convertPose(temp_pose).position );
-      }
-      points.push_back(points.front()); // connect first and last points for last line
-
-      visual_tools_->publishPath(points);
-    }
-
-
-
-
-
-    if (!stable)
+    if (!humanoid_stability_->isValidCOM(robot_state))
     {
       if (verbose_)
       {
-        ROS_WARN("Pose is NOT stable, pCOM at %f %f", com.x(), com.y());
+        ROS_WARN("Pose is NOT stable");
         visual_tools_->publishText(text_pose_, "NOT stable from center of mass", moveit_visual_tools::RED, moveit_visual_tools::LARGE);
         ros::Duration(1.1).sleep();
       }
@@ -507,7 +355,7 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
     }
 
     if (verbose_)
-      ROS_INFO("Pose is stable, pCOM at %f %f ---------------------------------------------", com.x(), com.y());
+      ROS_INFO("Pose is stable");   
 
     bool check_verbose = false;
     if (!scene_->isStateValid(robot_state, "", check_verbose)) // second argument is what planning group to collision check, "" is everything
@@ -522,29 +370,27 @@ bool HRP2JSKNTConstraintSampler::sample(robot_state::RobotState &robot_state, co
     }
 
     // Find min/max
-    if (false)
-    {
-      min_x_ = std::min(vjoint_positions[0], min_x_);
+    /*min_x_ = std::min(vjoint_positions[0], min_x_);
       max_x_ = std::max(vjoint_positions[0], max_x_);
 
       min_y_ = std::min(vjoint_positions[1], min_y_);
       max_y_ = std::max(vjoint_positions[1], max_y_);
 
       min_z_ = std::min(vjoint_positions[2], min_z_);
-      max_z_ = std::max(vjoint_positions[2], max_z_);
-    }
+      max_z_ = std::max(vjoint_positions[2], max_z_);*/
 
     if (verbose_)
     {
       visual_tools_->publishText(text_pose_, "Sample VALID!", moveit_visual_tools::WHITE, moveit_visual_tools::LARGE);
       ros::Duration(3.0).sleep();
     }
-    ROS_DEBUG_STREAM_NAMED("temp","Valid sample found");
+
+    ROS_DEBUG_STREAM_NAMED("temp","Passed - valid sample found on attempts " << attempt);
 
     return true;
   } // for attempts
 
-  ROS_DEBUG_STREAM_NAMED("temp","Aborted - ran out of attempts");
+  ROS_DEBUG_STREAM_NAMED("temp","Aborted - ran out of attempts (" << max_attempts << ")");
 
   return false;
 }
@@ -579,7 +425,7 @@ bool HRP2JSKNTConstraintSampler::sampleJoints(robot_state::RobotState &robot_sta
 
     values_[bounds_[i].index_] = random_number_generator_.uniformReal(bounds_[i].min_bound_, bounds_[i].max_bound_);
   }
-  
+
   robot_state.setJointGroupPositions(jmg_, values_);
 
   return true;
@@ -638,5 +484,11 @@ void HRP2JSKNTConstraintSampler::clear()
   uindex_.clear();
   values_.clear();
 }
+
+void HRP2JSKNTConstraintSampler::setVerbose(bool verbose)
+{
+  humanoid_stability_->setVerbose(verbose);
+}
+
 
 } //namespace

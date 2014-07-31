@@ -34,7 +34,7 @@
 
     <rosparam command="load" file="$(find hrp2jsknt_moveit_config)/config/kinematics.yaml"/>
 
-    <rosparam command="load" file="$(find hrp2jsknt_moveit_plugins)/hrp2jsknt_moveit_constraint_sampler/config/bounds_estimate.yaml"/>
+    <rosparam command="load" file="$(find moveit_humanoid_stability)/config/hrp2jsknt_stability.yaml"/>
   </node>
 
 </launch>

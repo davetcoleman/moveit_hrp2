@@ -74,6 +74,9 @@
 // Random numbers
 #include <random_numbers/random_numbers.h>
 
+// Stability checker
+#include <moveit_humanoid_stability/humanoid_stability.h>
+
 // Boost
 #include <boost/filesystem.hpp>
 #include <boost/pointer_cast.hpp>
@@ -330,18 +333,11 @@ public:
     }
   }
 
-  bool testFeasibility(const robot_state::RobotState& robot_state, bool verbose)
+  void loadHumanoidStabilityChecker(bool verbose)
   {
-    std::cout << "TEST FEASIBILITY CALLED!!!!! " << constraint_sampler_->getName() << std::endl;
-    /*
-    hrp2jsknt_moveit_constraint_sampler::HRP2JSKNTConstraintSamplerPtr hrp2constraint = 
-      boost::dynamic_pointer_cast<hrp2jsknt_moveit_constraint_sampler::HRP2JSKNTConstraintSampler>(constraint_sampler_);
-    if (!hrp2constraint)
-    {
-      ROS_ERROR_STREAM_NAMED("temp","No constraint sampler available for humanoid");
-    }
-    */
-    return true;
+    // Configure stability checker
+    if (!humanoid_stability_)
+      humanoid_stability_.reset(new moveit_humanoid_stability::HumanoidStability(verbose, *robot_state_, visual_tools_));
   }
 
   // Plan with MoveIt + Lightning for different arm positions
@@ -357,7 +353,7 @@ public:
   void genLightningPlans(bool verbose)
   {
     // Show the lab as collision objects
-    //jskLabCollisionEnvironment();
+    jskLabCollisionEnvironment();
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
@@ -394,24 +390,21 @@ public:
     // Visualize
     visual_tools_->publishRobotState(robot_state_);
     std::cout << "Visualizing robot state " << std::endl;
-    ros::Duration(1).sleep();
+    ros::Duration(2).sleep();
 
     visual_tools_->publishRobotState(goal_state_);
     std::cout << "Visualizing goal state " << std::endl;
-    ros::Duration(1).sleep();
+    ros::Duration(2).sleep();
 
     createBlankState(); // for hideRobot
     hideRobot();
 
 
-
-
-    // Testing: set custom validity checker
+    // Set custom validity checker for balance constraints
     std::cout << "SETTING CUSTOM VALIDITY CHECKER " << std::endl;
-
-    //typedef boost::function<bool(const robot_state::RobotState&, bool)> StateFeasibilityFn;
+    loadHumanoidStabilityChecker(verbose); 
     bool verbose_feasibility = true;
-    planning_scene_->setStateFeasibilityPredicate(boost::bind(&HRP2Demos::testFeasibility, this, _1, _2));
+    planning_scene_->setStateFeasibilityPredicate(humanoid_stability_->getStateFeasibilityFn());
 
 
     // Create plannign request
@@ -454,14 +447,14 @@ public:
       ROS_INFO_STREAM_NAMED("temp","Attempting to visualize trajectory anyway...");
     }
 
-    if (verbose)
+    if (verbose || true) // always show trajectory
     {
       response.trajectory = moveit_msgs::RobotTrajectory();
       res.getMessage(response);
 
       // Visualize the trajectory
       ROS_INFO("Visualizing the trajectory");
-      //ROS_DEBUG_STREAM_NAMED("temp","recieved trajectory: " << response.trajectory);
+      hideRobot(); // hide the other robot so that we can see the trajectory
       visual_tools_->publishTrajectoryPath(response.trajectory, true);
     }
     else
@@ -893,27 +886,8 @@ public:
     robot_state->enableFakeBaseTransform(foot, start_leg_joint, default_foot_transform);
   }
 
-  /**
-   * \brief Sample a full body's joint positions randomly for sampling based planning
-   * \param runs - how many attempts to do each sample
-   * \param problems - how many times to sample
-   * \param verbose
-   */
-  void genRandPoseGrounded(int runs, int problems, bool verbose)
+  void testFixedFootFeature(int runs, int problems, bool verbose)
   {
-    int attempts = runs;
-
-    robot_state_->setToDefaultValues();
-
-    // Move robot to specific place on plane
-    //fixRobotStateFoot(robot_state_, 1.0, 0.5);
-    fixRobotStateFoot(robot_state_, 1.5, 2.0);
-    //fixRobotStateFoot(robot_state_, 0.0, 0.0);
-
-    // Show the lab as collision objects
-    //jskLabCollisionEnvironment();
-
-    /*
     // Make random start state
     robot_state_->setToRandomPositions(joint_model_group_);
     robot_state_->updateStateWithFakeBase(); // force update
@@ -948,9 +922,27 @@ public:
     // Benchmark time
     double duration2 = (ros::Time::now() - start_time2).toSec();
     ROS_INFO_STREAM_NAMED("","Total time: " << duration2 << " seconds averaging " << duration2/problems << " seconds per rand sample");
-    exit(0);
-    */
-    
+  }
+
+  /**
+   * \brief Sample a full body's joint positions randomly for sampling based planning
+   * \param runs - how many attempts to do each sample
+   * \param problems - how many times to sample
+   * \param verbose
+   */
+  void genRandPoseGrounded(int runs, int problems, bool verbose)
+  {
+    int attempts = runs;
+
+    robot_state_->setToDefaultValues();
+
+    // Move robot to specific place on plane
+    //fixRobotStateFoot(robot_state_, 1.0, 0.5);
+    fixRobotStateFoot(robot_state_, 1.5, 2.0);
+    //fixRobotStateFoot(robot_state_, 0.0, 0.0);
+
+    // Show the lab as collision objects
+    //jskLabCollisionEnvironment();
 
     // Create a constraint sampler for random poses
     loadConstraintSampler(verbose);
@@ -1691,6 +1683,9 @@ private:
 
   // Constraint sampler
   constraint_samplers::ConstraintSamplerPtr constraint_sampler_;
+
+  // Tool for checking balance
+  moveit_humanoid_stability::HumanoidStabilityPtr humanoid_stability_;
 
 }; // class
 

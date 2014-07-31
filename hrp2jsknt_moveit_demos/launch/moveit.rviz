@@ -4,12 +4,10 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Status1
         - /MotionPlanning1
         - /MotionPlanning1/Scene Geometry1
         - /MotionPlanning1/Planning Request1
         - /MotionPlanning1/Planned Path1
-        - /HRP2 Demos Marker1
         - /HRP2 Demos Marker1/Namespaces1
         - /PlanningScene1/Scene Geometry1
         - /TF1/Tree1
@@ -1554,7 +1552,10 @@ Visualization Manager:
       Marker Topic: /hrp2_visual_markers
       Name: HRP2 Demos Marker
       Namespaces:
-        {}
+        COM: true
+        Path: true
+        Rectangle: true
+        Text: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -1890,22 +1891,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 4.41031
+      Distance: 9.37128
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.54447
-        Y: 1.64382
-        Z: 1.78814e-07
+        X: 0.594892
+        Y: 1.37181
+        Z: -1.49012e-06
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.724798
+      Pitch: 0.519798
       Target Frame: BODY
       Value: XYOrbit (rviz)
-      Yaw: 5.3736
+      Yaw: 5.10359
     Saved: ~
 Window Geometry:
   Displays:

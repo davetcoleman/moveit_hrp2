@@ -9,6 +9,7 @@ find_package(Eigen REQUIRED)
 find_package(Boost REQUIRED thread)
 
 find_package(catkin REQUIRED COMPONENTS
+  moveit_humanoid_stability
   hrl_kinematics
   moveit_core
   moveit_ros_planning
@@ -24,6 +25,7 @@ catkin_package(
   INCLUDE_DIRS
     hrp2jsknt_moveit_constraint_sampler/include/
   CATKIN_DEPENDS
+    moveit_humanoid_stability
     hrl_kinematics
     moveit_core
     moveit_ros_planning

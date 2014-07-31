@@ -1,7 +1,7 @@
 /*********************************************************************
- * Software License Agreement (BSD License)
+ * Software License Agreement ("Modified BSD License")
  *
- *  Copyright (c) 2011, Willow Garage, Inc.
+ *  Copyright (c) 2014, JSK, The University of Tokyo.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -14,7 +14,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of Willow Garage nor the names of its
+ *   * Neither the name of the JSK, The University of Tokyo nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -32,7 +32,10 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  *********************************************************************/
 
-/* Author: Dave Coleman */
+/* Author: Dave Coleman
+   Desc:   Samples 1 leg joint random, checks for partial validity, 
+           then samples rest of joints randomly adn checks for validity again
+*/
 
 #ifndef HRP2JSKNT_MOVEIT_PLUGINS__HRP2JSKNT_CONSTRAINT_SAMPLER_
 #define HRP2JSKNT_MOVEIT_PLUGINS__HRP2JSKNT_CONSTRAINT_SAMPLER_
@@ -44,11 +47,11 @@
 #include <pluginlib/class_list_macros.h>
 #include <ros/ros.h>
 
+// Stability checker
+#include <moveit_humanoid_stability/humanoid_stability.h>
+
 // Helper for Rviz
 #include <moveit_visual_tools/visual_tools.h>
-
-// Humanoid balance constraint tester
-#include <hrl_kinematics/TestStability.h>
 
 namespace hrp2jsknt_moveit_constraint_sampler
 {
@@ -79,12 +82,7 @@ public:
   HRP2JSKNTConstraintSampler(const planning_scene::PlanningSceneConstPtr &scene,
                              const std::string &group_name)
     : ConstraintSampler(scene, group_name)
-    , normal_vector_(0.0, 0.0, 1.0)
-    , support_mode_(hrl_kinematics::Kinematics::SUPPORT_SINGLE_LEFT)
   {
-
-    normal_vector_.normalize(); // TODO is this necessary?
-
     logInform("constructing HRP2JSKNTConstraintSampler");
   }
 
@@ -134,12 +132,6 @@ public:
    */
   bool configureJoint(const std::vector<kinematic_constraints::JointConstraint> &jc);
 
-  /**
-   * \brief Debug function for showing the course-grain constraint enforcement of torso
-   * \return true on success
-   */
-  bool displayBoundingBox(const Eigen::Affine3d &translation = Eigen::Affine3d::Identity()) const;
-
   virtual bool sample(robot_state::RobotState &robot_state, const robot_state::RobotState &ks,
                       unsigned int max_attempts);
 
@@ -184,21 +176,12 @@ public:
     static const std::string SAMPLER_NAME = "HRP2JSKNTConstraintSampler";
     return SAMPLER_NAME;
   }
-
-  void printVirtualJointExtremes() const
-  {
-    std::cout << "Virtual Joint Extremes: " << std::endl;
-    std::cout << "  min_x: " << min_x_ << std::endl;
-    std::cout << "  max_x: " << max_x_ << std::endl;
-    std::cout << "  min_y: " << min_y_ << std::endl;
-    std::cout << "  max_y: " << max_y_ << std::endl;
-    std::cout << "  min_z: " << min_z_ << std::endl;
-    std::cout << "  max_z: " << max_z_ << std::endl;
-
-    displayBoundingBox();
-  }
-
-
+  
+  /**
+   * \brief Override so we can set verbose flag in sub components
+   */
+  virtual void setVerbose(bool verbose);
+  
   private:
 
 
@@ -252,43 +235,29 @@ public:
   boost::shared_ptr<kinematic_constraints::OrientationConstraint> orientation_constraint_; /**< \brief Holds the orientation constraint for sampling */
 
   // Leg IK solvers
-  const robot_model::JointModelGroup* left_leg_;
-  const robot_model::JointModelGroup* right_leg_;
+  //const robot_model::JointModelGroup* left_leg_;
+  //const robot_model::JointModelGroup* right_leg_;
 
   // Store desired feet positions
-  Eigen::Affine3d left_foot_position_;
-  Eigen::Affine3d right_foot_position_;
+  //Eigen::Affine3d left_foot_position_;
+  //Eigen::Affine3d right_foot_position_;
 
   // Store foot to torso translation
-  Eigen::Affine3d left_foot_to_torso_;
+  //Eigen::Affine3d left_foot_to_torso_;
 
   // Allocate memory for storing transforms of feet
-  Eigen::Affine3d left_foot_position_new_;
-  Eigen::Affine3d right_foot_position_new_;
+  //Eigen::Affine3d left_foot_position_new_;
+  //Eigen::Affine3d right_foot_position_new_;
+
+  // Verbose mode
+  geometry_msgs::Pose text_pose_;
 
   // For visualizing things in rviz
   moveit_visual_tools::VisualToolsPtr visual_tools_;
 
-  // Bounds for estimating virtural joint contraint
-  double min_x_;
-  double max_x_;
-  double min_y_;
-  double max_y_;
-  double min_z_;
-  double max_z_;
-
-  // Stability checker
-  hrl_kinematics::TestStability test_stability_;
-  std::map<std::string, double> joint_positions_map_;
-  const robot_model::JointModelGroup* robot_joint_group_;
-  hrl_kinematics::Kinematics::FootSupport support_mode_;
-  tf::Vector3 normal_vector_;
-
-  // Verbose mode
-  geometry_msgs::Pose text_pose_;
+  // Tool for checking balance
+  moveit_humanoid_stability::HumanoidStabilityPtr humanoid_stability_;
 };
-
-MOVEIT_CLASS_FORWARD(HRP2JSKNTConstraintSampler);
 
 // define the sampler allocator plugin interface
 class HRP2JSKNTConstraintSamplerAllocator : public constraint_samplers::ConstraintSamplerAllocator
