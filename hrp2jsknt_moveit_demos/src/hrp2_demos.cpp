@@ -113,10 +113,18 @@ public:
     visual_tools_->loadRobotStatePub("/hrp2_demos");
     visual_tools_->loadMarkerPub();
     //visual_tools_->loadTrajectoryPub();
-    visual_tools_->deleteAllMarkers(); // clear all old markers
+
+    // Clear all old visual aspects from Rviz
+    resetRviz();
 
     // Allow time to startup
     ros::Duration(0.1).sleep();
+  }
+  
+  void resetRviz()
+  {
+    visual_tools_->deleteAllMarkers(); // clear all old markers
+    //visual_tools_->removeAllCollisionObjects(); // clear all old collision objects that might be visible in rviz
   }
 
   void loadPlanningPipeline()
@@ -343,12 +351,26 @@ public:
   }
 
   // Whole body planning with MoveIt!
-  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=3 group:=whole_body verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
+  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 group:=whole_body verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
   void genRandMotionPlans(bool verbose, bool use_experience, bool use_collisions)
   {
+
+    // Load planning scene monitor so that we can publish a collision enviornment to rviz
+    if (!loadPlanningSceneMonitor())
+      return;
+
     // Show the lab as collision objects
     if (use_collisions)
+    {
       jskLabCollisionEnvironment();
+    }
+    else
+    {
+      ros::Duration(0.25).sleep();
+      visual_tools_->removeAllCollisionObjects(planning_scene_monitor_); // clear all old collision objects that might be visible in rviz
+    }
+
+    //visual_tools_->removeAllCollisionObjects();
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
@@ -396,7 +418,6 @@ public:
 
 
     // Set custom validity checker for balance constraints
-    std::cout << "SETTING CUSTOM VALIDITY CHECKER " << std::endl;
     loadHumanoidStabilityChecker(verbose); 
     bool verbose_feasibility = true;
     planning_scene_->setStateFeasibilityPredicate(humanoid_stability_->getStateFeasibilityFn());
@@ -468,7 +489,7 @@ public:
     }
   }
 
-  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=6 group:=left_arm verbose:=1
+  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=2 group:=left_arm verbose:=1
   void displayLightningPlans(int problems, bool verbose)
   {
     robot_state_->setToDefaultValues();
@@ -509,7 +530,7 @@ public:
     robot_trajectory::RobotTrajectoryPtr robot_trajectory;
 
     // Enable the robot state to have a foot base
-    fixRobotStateFoot(robot_state_, 1, 1);
+    //fixRobotStateFoot(robot_state_, 1, 1);
 
     for (std::size_t path_id = 0; path_id < std::min(int(paths.size()), problems); ++path_id)
     {
@@ -695,34 +716,15 @@ public:
     std::cout << "------------------------------------------------------------------------- " << std::endl;
     std::cout << std::endl;
 
+    ros::Duration(0.1).sleep();
+    ros::spinOnce();
+
     return true;
-  }
-
-  void randomCollisionEnvironment()
-  {
-    // Move a wall
-    ROS_WARN_STREAM_NAMED("temp","publishing collision wall");
-
-
-    moveit_msgs::CollisionObject collision_obj;
-    visual_tools_->getCollisionWallMsg(visual_tools_->fRand(0.1, 1), // x
-                                       visual_tools_->fRand(0.1, 1), // y
-                                       0, // angle
-                                       2, // width
-                                       "wall1", // name
-                                       collision_obj);
-
-    planning_scene_->processCollisionObjectMsg(collision_obj);
   }
 
   void jskLabCollisionEnvironment()
   {
-    // Load planning scene monitor so that we can publish a collision enviornment to rviz
-    if (!loadPlanningSceneMonitor())
-      return;
-
     // Collision
-    ros::Duration(0.1).sleep();
     {
       planning_scene_monitor::LockedPlanningSceneRW ps(planning_scene_monitor_);
       if (ps)
@@ -822,6 +824,10 @@ public:
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
     fixRobotStateFoot(robot_state_, 1.5, 2.0);
     //fixRobotStateFoot(robot_state_, 0.0, 0.0);
+
+    // Load planning scene monitor so that we can publish a collision enviornment to rviz
+    if (!loadPlanningSceneMonitor())
+      return;
 
     // Show the lab as collision objects
     //jskLabCollisionEnvironment();
