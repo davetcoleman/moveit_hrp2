@@ -11,7 +11,6 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_planning 
   pluginlib
   moveit_visual_tools
-  hrp2_moveit_msgs
 )
 
 find_package(Eigen REQUIRED)
@@ -27,7 +26,6 @@ catkin_package(
     random_numbers
     moveit_core
     moveit_ros_planning
-    moveit_msgs
     interactive_markers
     moveit_visual_tools
 )
@@ -41,8 +39,3 @@ link_directories(${catkin_LIBRARY_DIRS})
 
 add_executable(hrp2_demos src/hrp2_demos.cpp)
 target_link_libraries(hrp2_demos ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-add_dependencies(hrp2_demos hrp2_moveit_msgs_gencpp ${PROJECT_NAME}_gencfg) # wait for external msgs to be built
-
-add_executable(random_poses_grounded src/random_poses_grounded.cpp)
-target_link_libraries(random_poses_grounded ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-add_dependencies(random_poses_grounded hrp2_moveit_msgs_gencpp ${PROJECT_NAME}_gencfg) # wait for external msgs to be built

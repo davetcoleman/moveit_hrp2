@@ -5,6 +5,9 @@ Workspace for MoveIt! manipulation integration with HRP2NT. Note that the HRP2 m
 
 ## Install
 
+**NOTE THESE INSTRUCTIONS ARE OUT OF DATE AUGUST 1 2014**
+
+
 To use this repo:
 
 * Install wstool package if you have not already:
@@ -68,11 +71,6 @@ Start the ik server:
 roslaunch jsk_ik_server hrp2jsknt-ik-server.launch 
 ```
 
-Start the walking server:
-```
-roslaunch hrp2jsknt_moveit_demos calc_walking_pattern_server.launch 
-```
-
 Launch move_group separate:
 ```
 roslaunch hrp2jsknt_moveit_config move_group_context.launch 
@@ -91,16 +89,6 @@ hrp2jsknt_moveit_config/config/kinematics.yaml
 ```
 And [un]comment out the links you want the kinematics solver to use.
 
-To change if MoveIt uses a walking motion generator, edit the file 
-```
-hrp2jsknt_moveit_config/launch/ompl_planning_pipeline.launch.xml
-```
-And add/remove the line
-```
-default_planner_request_adapters/AddWalkingSteps
-```
-from the ``planning_adapters`` arg.
-
 ### HRP2 MoveIt Demos
 
 A script has been created for testing various functionalities
@@ -108,11 +96,6 @@ A script has been created for testing various functionalities
 Launch Rviz first:
 ```
 roslaunch hrp2jsknt_moveit_demos moveit_rviz.launch
-```
-
-You need the walking server running for mode #2
-```
-roslaunch hrp2jsknt_moveit_demos calc_walking_pattern_server.launch 
 ```
 
 Now run demo in different modes (change the number at the end):
@@ -124,7 +107,7 @@ Change this mode to different numbers:
 
 * 0 - Loop through all these modes continously
 * 1 - Plan to a pre-defined crouching position, fixed feet
-* 2 - Generate random walking positions and generate footsteps using ROS Service call to eulisp
+* 2 - 
 * 3 - Plan with MoveIt + Lightning for different arm positions
 * 4 - Show the experience database visually in Rviz
 * 5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)

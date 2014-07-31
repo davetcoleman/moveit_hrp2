@@ -33,8 +33,7 @@
  *********************************************************************/
 
 /* Author: Dave Coleman
-   Desc:   Testing program for recieving walking gaits for JSK lisp code
-   as well as planning biped walking motions in MoveIt/OMPL
+   Desc:   Testing program for humanoid/HRP2 functionality
 */
 
 #include <ros/ros.h>
@@ -65,9 +64,6 @@
 //#include <hrp2jsknt_moveit_constraint_sampler/hrp2jsknt_constraint_sampler.h>
 #include <moveit/constraint_sampler_manager_loader/constraint_sampler_manager_loader.h>
 
-// Walking
-#include <hrp2_moveit_msgs/GetWalkingMotion.h>
-
 // Helper for Rviz
 #include <moveit_visual_tools/visual_tools.h>
 
@@ -93,8 +89,6 @@ class HRP2Demos
 public:
   HRP2Demos(const std::string planning_group_name)
     : nh_("~")
-    , walking_service_name_("/generate_walking_service")
-    , walking_client_loaded_(false)
     , robot_model_loader_(ROBOT_DESCRIPTION) // load the URDF
     , planning_group_name_(planning_group_name)
     , whole_body_group_name_("whole_body")
@@ -626,119 +620,6 @@ public:
     }
 
     return true;
-  }
-
-  // Send to walking server to generate footsteps
-  void genRandWalking()
-  {
-    createBlankState(); // for hide robot
-
-    // Set to crouching position
-    setStateToGroupPose(goal_state_,  "reset_whole_body", joint_model_group_);
-    setStateToGroupPose(robot_state_, "reset_whole_body", joint_model_group_);
-
-    // Generate random goal positions
-    ros::Rate loop_rate(1);
-
-    for (int counter=0; counter<10 && ros::ok(); counter++)
-    {
-      ROS_WARN_STREAM_NAMED("temp","RUN " << counter << " ------------------------------");
-      setStateXYTheta(goal_state_);
-
-      hideRobot();
-      ros::Duration(2.0).sleep();
-      visual_tools_->publishRobotState(robot_state_);
-      ros::Duration(2.0).sleep();
-      visual_tools_->publishRobotState(goal_state_);
-      ros::Duration(2.0).sleep();
-
-      hrp2_moveit_msgs::GetWalkingMotion walking_srv;
-      moveit::core::robotStateToRobotStateMsg(*robot_state_, walking_srv.request.start_state);
-      moveit::core::robotStateToRobotStateMsg(*goal_state_, walking_srv.request.goal_state);
-
-      // Load the walking generator ROS service client if it is not already
-      if (!walking_client_loaded_)
-      {
-        ros::Duration wait_for_server_time(0.0); // how long to wait for the walking server to come up
-
-        // Create ROS Server Client
-        walking_service_client_ = boost::make_shared<ros::ServiceClient>(nh_.serviceClient
-                                                                         <hrp2_moveit_msgs::GetWalkingMotion>(walking_service_name_));
-        if (!walking_service_client_->waitForExistence(wait_for_server_time))
-          ROS_WARN_STREAM_NAMED("srv","Unable to connect to ROS service client with name: " << walking_service_client_->getService());
-        else
-          ROS_INFO_STREAM_NAMED("srv","Service client started with ROS service name: " << walking_service_client_->getService());
-        walking_client_loaded_ = true;
-      }
-
-      ROS_DEBUG_STREAM("Calling service: " << walking_service_client_->getService() );
-      ROS_DEBUG_STREAM_NAMED("temp","Message request: " << walking_srv.request);
-      if (walking_service_client_->call(walking_srv))
-      {
-        trajectory_msgs::JointTrajectoryPoint last_good = walking_srv.response.trajectory.joint_trajectory.points[1];
-        // Hack repair the trajectory
-        for (std::size_t i = 0; i < walking_srv.response.trajectory.joint_trajectory.points.size(); ++i)
-        {
-          if (walking_srv.response.trajectory.joint_trajectory.points[i].positions.size() == 0)
-          {
-            ROS_WARN_STREAM_NAMED("temp","repairing traj point " << i);
-            // repair this trajectory
-            walking_srv.response.trajectory.joint_trajectory.points[i] = last_good;
-          }
-          else
-          {
-            ROS_INFO_STREAM_NAMED("temp","not repairing traj point " << i);
-            // update our last provided state
-            last_good = walking_srv.response.trajectory.joint_trajectory.points[i];
-          }
-        }
-
-        ROS_DEBUG_STREAM("Service response recieved, message: \n" << walking_srv.response);
-
-        if (true) // use moveit's built in trajectory publisher
-        {
-          visual_tools_->publishTrajectoryPath(walking_srv.response.trajectory);
-        }
-        else // use our custom one
-        {
-          moveit_msgs::RobotTrajectory trajectory = walking_srv.response.trajectory;
-
-          // Convert to a MoveIt datastructure
-          robot_trajectory::RobotTrajectory robot_traj(robot_model_, planning_group_name_);
-          robot_traj.setRobotTrajectoryMsg(*robot_state_, trajectory);
-
-          // loop through each trajectory point and display in rviz
-          ROS_DEBUG_STREAM_NAMED("temp","looping though " << robot_traj.getWayPointCount() << " trajectories");
-
-          ros::Rate loop_rate_traj(10);
-          for (std::size_t traj_pt = 0; traj_pt < robot_traj.getWayPointCount(); ++traj_pt)
-          {
-            ROS_INFO_STREAM_NAMED("temp","trajectory point " << traj_pt << " is: \n" << robot_traj.getWayPoint(traj_pt));
-            // send the message to the RobotState display
-            //robot_state::robotStateToRobotStateMsg(robot_traj.getWayPoint(traj_pt), display_robot_msg_.state);
-            //visual_tools_->publishRobotState( robot_traj.getWayPoint(traj_pt), PLANNING_GROUP );
-            ROS_ERROR_STREAM_NAMED("temp","todo implement this (uncomment above)");
-
-            // let ROS send the message, then wait a while
-            ros::spinOnce();
-            loop_rate_traj.sleep();
-          }
-        }
-      }
-      else
-      {
-        ROS_ERROR_STREAM_NAMED("demos","No service responded, did you start the walking service?");
-      }
-
-      // let ROS send the message, then wait a while
-      ros::spinOnce();
-      loop_rate.sleep();
-
-      // Copy the last goal state to our new current state
-      *robot_state_ = *goal_state_;
-
-    } // for
-
   }
 
   // Plan robot moving to crouching position
@@ -1649,9 +1530,6 @@ private:
 
   ros::NodeHandle nh_;
 
-  boost::shared_ptr<ros::ServiceClient> walking_service_client_;
-  std::string walking_service_name_;
-
   //moveit_msgs::DisplayRobotState display_robot_msg_;
   //moveit_msgs::DisplayTrajectory display_trajectory_msg_;
 
@@ -1672,8 +1550,6 @@ private:
 
   // For visualizing things in rviz
   moveit_visual_tools::VisualToolsPtr visual_tools_;
-
-  bool walking_client_loaded_; // only load when we need it
 
   // The visual tools for interfacing with Rviz
   //ompl_rviz_viewer::OmplRvizViewerPtr ompl_viewer_;
@@ -1772,8 +1648,8 @@ int main(int argc, char **argv)
           client.genCrouching();
           break;
         case 2:
-          ROS_INFO_STREAM_NAMED("demos","2 - Generate random walking positions and generate footsteps using ROS Service call to eulisp");
-          client.genRandWalking();
+          ROS_WARN_STREAM_NAMED("temp","unknown");
+          //ROS_INFO_STREAM_NAMED("demos","2 - ");
           break;
         case 3:
           ROS_INFO_STREAM_NAMED("demos","3 - Plan with MoveIt + Lightning for different arm positions");
@@ -1788,7 +1664,7 @@ int main(int argc, char **argv)
           client.genRandLegConfigurations();
           break;
         case 6:
-          ROS_INFO_STREAM_NAMED("demos","4 - Generate random positions and plan to them with MoveIt (no walking)");
+          ROS_INFO_STREAM_NAMED("demos","4 - Generate random positions and plan to them with MoveIt");
           client.genRandMoveItPlan();
           break;
         case 7:
