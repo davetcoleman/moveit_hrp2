@@ -334,20 +334,21 @@ public:
       humanoid_stability_.reset(new moveit_humanoid_stability::HumanoidStability(verbose, *robot_state_, visual_tools_));
   }
 
-  // Plan with MoveIt + Lightning for different arm positions
-  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=3 group:=left_arm
-  void genLightningPlans(int problems, bool verbose)
+  void genRandMotionPlans(int problems, bool verbose, bool use_experience, bool use_collisions)
   {
     for (std::size_t i = 0; i < problems; ++i)
     {
-      genLightningPlans(verbose);
+      genRandMotionPlans(verbose, use_experience, use_collisions);
     }
   }
 
-  void genLightningPlans(bool verbose)
+  // Whole body planning with MoveIt!
+  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=3 group:=whole_body verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
+  void genRandMotionPlans(bool verbose, bool use_experience, bool use_collisions)
   {
     // Show the lab as collision objects
-    jskLabCollisionEnvironment();
+    if (use_collisions)
+      jskLabCollisionEnvironment();
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
@@ -422,7 +423,7 @@ public:
     req.group_name = planning_group_name_;
     req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
     req.allowed_planning_time = 30;
-    req.use_experience = false;
+    req.use_experience = use_experience;
 
     // Call pipeline
     loadPlanningPipeline(); // always call first
@@ -460,7 +461,7 @@ public:
     //ROS_WARN_STREAM_NAMED("temp","Saving experience db...");
     ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
 
-    if (req.use_experience)
+    if (use_experience)
     {
       ompl::tools::LightningPtr lightning = boost::dynamic_pointer_cast<ompl::tools::Lightning>(mbpc->getOMPLSimpleSetup());
       lightning->saveIfChanged();
@@ -1584,6 +1585,8 @@ int main(int argc, char **argv)
   int runs = 1; // how many times to run the same problem
   int problems = 1; // how many problems to solve
   bool verbose = false;
+  bool use_experience = true;
+  bool use_collisions = false;
   std::string planning_group_name = "whole_body";
   std::size_t seed = 0;
 
@@ -1631,6 +1634,20 @@ int main(int argc, char **argv)
       planning_group_name = argv[i];
       ROS_INFO_STREAM_NAMED("main","Using planning group " << planning_group_name);
     }
+
+    if( std::string(argv[i]).compare("--use_experience") == 0 )
+    {
+      ++i;
+      use_experience = atoi(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","Using experience: " << use_experience);
+    }
+
+    if( std::string(argv[i]).compare("--use_collisions") == 0 )
+    {
+      ++i;
+      use_collisions = atoi(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","Using collisions: " << use_collisions);
+    }
   }
 
   hrp2jsknt_moveit_demos::HRP2Demos client(planning_group_name);
@@ -1644,20 +1661,19 @@ int main(int argc, char **argv)
       switch (mode)
       {
         case 1:
-          ROS_INFO_STREAM_NAMED("demos","1 - Plan to a pre-defined crouching position, fixed feet");
-          client.genCrouching();
+          ROS_INFO_STREAM_NAMED("demos","1 - Whole body planning with MoveIt!");
+          client.genRandMotionPlans(problems, verbose, use_experience, use_collisions);
           break;
         case 2:
-          ROS_WARN_STREAM_NAMED("temp","unknown");
-          //ROS_INFO_STREAM_NAMED("demos","2 - ");
+          ROS_INFO_STREAM_NAMED("demos","2 - Show the experience database visually in Rviz");
+          client.displayLightningPlans(problems, verbose);
           break;
         case 3:
-          ROS_INFO_STREAM_NAMED("demos","3 - Plan with MoveIt + Lightning for different arm positions");
-          client.genLightningPlans(problems, verbose);
+          ROS_WARN_STREAM_NAMED("temp","unknown");
           break;
         case 4:
-          ROS_INFO_STREAM_NAMED("demos","6 - Show the experience database visually in Rviz");
-          client.displayLightningPlans(problems, verbose);
+          ROS_INFO_STREAM_NAMED("demos","1 - Plan to a pre-defined crouching position, fixed feet");
+          client.genCrouching();
           break;
         case 5:
           ROS_INFO_STREAM_NAMED("demos","5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)");

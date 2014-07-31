@@ -17,6 +17,8 @@
   <arg name="problems" default="1" />
   <arg name="verbose" default="0" />
   <arg name="group" default="whole_body" />
+  <arg name="use_experience" default="1" />
+  <arg name="use_collisions" default="1" />
 
 
   <!-- Planning Functionality -->
@@ -26,7 +28,8 @@
 
   <node name="hrp2jsknt_moveit_demos" pkg="hrp2jsknt_moveit_demos" type="hrp2_demos" respawn="false" 
 	launch-prefix="$(arg launch_prefix)" output="screen" 
-	args="--mode $(arg mode) --seed $(arg seed) --runs $(arg runs) --problems $(arg problems) --verbose $(arg verbose) --group $(arg group)">
+	args="--mode $(arg mode) --seed $(arg seed) --runs $(arg runs) --problems $(arg problems) --verbose $(arg verbose) --group $(arg group)
+	      --use_experience $(arg use_experience) --use_collisions $(arg use_collisions) ">
 
     <!-- DTC Testing -->
     <!--param name="constraint_samplers" value=""/-->

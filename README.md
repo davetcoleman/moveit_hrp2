@@ -103,15 +103,19 @@ Now run demo in different modes (change the number at the end):
 roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1
 ```
 
-Change this mode to different numbers:
+Change this mode to different numbers (sub lists are their parameters)
 
-* 0 - Loop through all these modes continously
-* 1 - Plan to a pre-defined crouching position, fixed feet
-* 2 - 
-* 3 - Plan with MoveIt + Lightning for different arm positions
-* 4 - Show the experience database visually in Rviz
+* 1 - Whole body planning with MoveIt!
+ * problem - how many random plans to generate
+ * verbose
+ * use_experience - use lightning or not
+ * use_collisions - show a collision environment or not
+* 2 - Show the experience database visually in Rviz
+* 3 - ?
+* 4 - Plan to a pre-defined crouching position, fixed feet
 * 5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)
 * 6 - Generate random walking positions and plan to them with MoveIt (no walking)
 * 7 - Sample single-foot-fixed poses of robot
 * 8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver
 * 9 - Exit
+* 0 - Loop through all these modes continously
