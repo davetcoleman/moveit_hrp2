@@ -1,8 +1,0 @@
-<library path="libhrp2jsknt_planning_request_adapters">
-
-  <class name="hrp2jsknt_planner_request_adapters/AddWalkingSteps" type="hrp2jsknt_planner_request_adapters::AddWalkingSteps" base_class_type="planning_request_adapter::PlanningRequestAdapter">
-    <description>
-    </description>
-  </class>
-  
-</library>
