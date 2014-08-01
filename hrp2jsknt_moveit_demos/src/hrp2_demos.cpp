@@ -194,9 +194,9 @@ public:
     const robot_model::JointModelGroup* right_leg_group = robot_model_->getJointModelGroup("right_leg");
 
     if (!left_leg_group)
-      ROS_ERROR_STREAM_NAMED("demos","Could not load left leg group");
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Could not load left leg group");
     if (!right_leg_group)
-      ROS_ERROR_STREAM_NAMED("demos","Could not load right leg group");
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Could not load right leg group");
 
     // Start looping
     ros::Rate loop_rate(100);
@@ -232,7 +232,7 @@ public:
       // Now solve for one leg
       if (robot_state_->setFromIK(left_leg_group, left_foot_position_new, 10, 0.1))
       {
-        ROS_INFO_STREAM_NAMED("temp","Found IK Solution for left!");
+        ROS_INFO_STREAM_NAMED("hrp2_demos","Found IK Solution for left!");
 
         // Show results
         //printVirtualJointPosition(robot_state_);
@@ -242,7 +242,7 @@ public:
         // Now solve for other leg
         if (robot_state_->setFromIK(right_leg_group, right_foot_position_new, 10, 0.1))
         {
-          ROS_INFO_STREAM_NAMED("temp","Found IK Solution for BOTH!");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","Found IK Solution for BOTH!");
 
           // Show results
           //printVirtualJointPosition(robot_state_);
@@ -251,7 +251,7 @@ public:
         }
         else
         {
-          ROS_ERROR_STREAM_NAMED("temp","Did not find IK solution");
+          ROS_ERROR_STREAM_NAMED("hrp2_demos","Did not find IK solution");
           // Hide Robot
           visual_tools_->hideRobot();
           ros::Duration(0.5).sleep();
@@ -259,7 +259,7 @@ public:
       }
       else
       {
-        ROS_ERROR_STREAM_NAMED("temp","Did not find IK solution");
+        ROS_ERROR_STREAM_NAMED("hrp2_demos","Did not find IK solution");
 
         // Print out virtual joint status
         //printVirtualJointPosition(robot_state_);
@@ -283,7 +283,7 @@ public:
     ros::Rate loop_rate(1);
     for (int counter=0; counter<1 && ros::ok(); counter++)
     {
-      //ROS_WARN_STREAM_NAMED("temp","RUN " << counter << " ------------------------------");
+      //ROS_WARN_STREAM_NAMED("hrp2_demos","RUN " << counter << " ------------------------------");
 
       // Reset
       visual_tools_->hideRobot();
@@ -357,7 +357,7 @@ public:
       if(res.error_code_.val != res.error_code_.SUCCESS)
       {
         ROS_ERROR("Could not compute plan successfully =======================================================");
-        ROS_INFO_STREAM_NAMED("temp","Attempting to visualize trajectory anyway...");
+        ROS_INFO_STREAM_NAMED("hrp2_demos","Attempting to visualize trajectory anyway...");
       }
 
       response.trajectory = moveit_msgs::RobotTrajectory();
@@ -365,7 +365,7 @@ public:
 
       // Visualize the trajectory
       ROS_INFO("Visualizing the trajectory");
-      //ROS_DEBUG_STREAM_NAMED("temp","recieved trajectory: " << response.trajectory);
+      //ROS_DEBUG_STREAM_NAMED("hrp2_demos","recieved trajectory: " << response.trajectory);
 
       visual_tools_->publishTrajectoryPath(response.trajectory);
     }
@@ -409,6 +409,7 @@ public:
     planning_scene_->setStateFeasibilityPredicate(humanoid_stability_->getStateFeasibilityFn());
 
     // Load planning
+    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Loading planning pipeline");
     loadPlanningPipeline(); // always call first
 
     // Remember the planning context even after solving is done
@@ -421,13 +422,21 @@ public:
     // Loop through planning
     for (std::size_t i = 0; i < problems; ++i)
     {
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << "NEW PLAN STARTING ---------------------------------------------------------- " << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+
       genRandWholeBodyPlans(verbose, use_experience, use_collisions, planning_context_handle);
 
       // Save all contexts to a set
       planning_context_handles.insert(planning_context_handle);
       if (planning_context_handles.size() > 1)
       {
-        ROS_ERROR_STREAM_NAMED("temp","Unexpected: more than 1 planning context now exists");
+        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unexpected: more than 1 planning context now exists");
         exit(-1);
       }
 
@@ -439,21 +448,14 @@ public:
       }
 
       // Debugging
+      std::cout << std::endl;
       lightning->printLogs();
-
-      std::cout << std::endl;
-      std::cout << std::endl;
-      std::cout << std::endl;
-      std::cout << "NEW PLAN STARTING ---------------------------------------------------------- " << std::endl;
-      std::cout << std::endl;
-      std::cout << std::endl;
-      std::cout << std::endl;
     }
 
     // Save the solutions to file
     if (use_experience)
     {
-      ROS_WARN_STREAM_NAMED("temp","Saving experience db...");
+      ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
 
       lightning->saveIfChanged();
     }
@@ -465,15 +467,16 @@ public:
   void genRandWholeBodyPlans(bool verbose, bool use_experience, bool use_collisions, planning_interface::PlanningContextPtr &planning_context_handle)
   {
     // Use constraint sampler to find valid random state
+    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random start and goal states");
     int attempts = 10000;
     if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
     {
-      ROS_ERROR_STREAM_NAMED("temp","Unable to find valid start state");
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
       return;
     }
     if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
     {
-      ROS_ERROR_STREAM_NAMED("temp","Unable to find valid goal state");
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
       return;
     }
 
@@ -507,8 +510,8 @@ public:
 
     // Goal constraint
     double tolerance_pose = 0.0001;
-    moveit_msgs::Constraints goal_constraint =
-      kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_, tolerance_pose, tolerance_pose);
+    moveit_msgs::Constraints goal_constraint = kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_, 
+                                                                                               tolerance_pose, tolerance_pose);
     req.goal_constraints.push_back(goal_constraint);
 
     // Other settings
@@ -528,7 +531,7 @@ public:
     if(res.error_code_.val != res.error_code_.SUCCESS)
     {
       ROS_ERROR("Could not compute plan successfully =======================================================");
-      ROS_INFO_STREAM_NAMED("temp","Attempting to visualize trajectory anyway...");
+      ROS_INFO_STREAM_NAMED("hrp2_demos","Attempting to visualize trajectory anyway...");
     }
 
     if (verbose || true) // always show trajectory
@@ -543,7 +546,7 @@ public:
     }
     else
     {
-      ROS_WARN_STREAM_NAMED("temp","Not visualizing because not in verbose mode");
+      ROS_WARN_STREAM_NAMED("hrp2_demos","Not visualizing because not in verbose mode");
     }
 
 
@@ -657,7 +660,7 @@ public:
     {
       // Visualize the trajectory
       ROS_INFO("Visualizing the trajectory");
-      //ROS_DEBUG_STREAM_NAMED("temp","recieved trajectory: " << response.trajectory);
+      //ROS_DEBUG_STREAM_NAMED("hrp2_demos","recieved trajectory: " << response.trajectory);
       /*
         display_trajectory_msg_.trajectory_start = response.trajectory_start;
         display_trajectory_msg_.trajectory.clear();
@@ -671,7 +674,7 @@ public:
     }
     else
     {
-      ROS_ERROR_STREAM_NAMED("temp","Failed to create plan crouch");
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Failed to create plan crouch");
     }
 
     ros::Duration(1.0).sleep();
@@ -680,7 +683,7 @@ public:
   bool loadPlanningSceneMonitor()
   {
     // Allows us to sycronize to Rviz and also publish collision objects to ourselves
-    ROS_DEBUG_STREAM_NAMED("temp","Loading Planning Scene Monitor -------------------------------------------- ");
+    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Loading Planning Scene Monitor");
     planning_scene_monitor_.reset(new planning_scene_monitor::PlanningSceneMonitor(planning_scene_, ROBOT_DESCRIPTION,
                                                                                    boost::shared_ptr<tf::Transformer>(), "hrp2_demos"));
     ros::spinOnce();
@@ -696,10 +699,10 @@ public:
     }
     else
     {
-      ROS_ERROR_STREAM_NAMED("temp","Planning scene not configured");
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Planning scene not configured");
       return false;
     }
-    std::cout << std::endl;
+    ros::spinOnce();
     ros::Duration(0.1).sleep();
     ros::spinOnce();
 
@@ -814,7 +817,7 @@ public:
       // Display result
       if (constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
       {
-        ROS_INFO_STREAM_NAMED("temp","Found a valid sample " << problem_id);
+        ROS_INFO_STREAM_NAMED("hrp2_demos","Found a valid sample " << problem_id);
         std::cout << std::endl;
 
         if (verbose || true)
@@ -876,7 +879,7 @@ public:
       for (std::size_t i = 0; i < 7; ++i)
       {
         double alpha = test_values[i];
-        ROS_WARN_STREAM_NAMED("temp","Testing alpha with value " << alpha);
+        ROS_WARN_STREAM_NAMED("hrp2_demos","Testing alpha with value " << alpha);
 
         // Set the alpha on the ROS param server
 
@@ -909,7 +912,7 @@ public:
       // Run test
       if (!genIKRequests(problems, seed))
       {
-        ROS_ERROR_STREAM_NAMED("temp","Test failed");
+        ROS_ERROR_STREAM_NAMED("hrp2_demos","Test failed");
         return 1000; // a large number
       }
     }
@@ -941,7 +944,7 @@ public:
       return "upper_body_ik_default";
     }
 
-    ROS_ERROR_STREAM_NAMED("temp","Unknown planning group, no start pose found.");
+    ROS_ERROR_STREAM_NAMED("hrp2_demos","Unknown planning group, no start pose found.");
     exit(-1);
   }
 
@@ -978,14 +981,14 @@ public:
     problems += skip_rands; // offset problems by where we start from
     for (std::size_t i = 0; i < skip_rands; ++i)
     {
-      ROS_WARN_STREAM_NAMED("temp","Skipping position " << i);
+      ROS_WARN_STREAM_NAMED("hrp2_demos","Skipping position " << i);
       robot_state_->setToRandomPositions(joint_model_group_, *rng);
     }
 
     for (std::size_t problem_id = skip_rands; problem_id < problems; ++problem_id)
     {
       std::cout << std::endl;
-      ROS_INFO_STREAM_NAMED("temp","Testing number " << problem_id+1 << " of " << problems << " ======================================");
+      ROS_INFO_STREAM_NAMED("hrp2_demos","Testing number " << problem_id+1 << " of " << problems << " ======================================");
 
       robot_state_->setToDefaultValues();
       goal_state_->setToDefaultValues();
@@ -996,7 +999,7 @@ public:
       // hack to skip run 2 that is bad
       if (problem_id == 1 && false)
       {
-        ROS_WARN_STREAM_NAMED("temp","using skip run 2 hack");
+        ROS_WARN_STREAM_NAMED("hrp2_demos","using skip run 2 hack");
         continue;
       }
 
@@ -1071,7 +1074,7 @@ public:
       {
         if (!poseIsSimilar(poses[i], poses_new[i]))
         {
-          ROS_ERROR_STREAM_NAMED("temp","Pose not similar: " << tips[i]->getName());
+          ROS_ERROR_STREAM_NAMED("hrp2_demos","Pose not similar: " << tips[i]->getName());
           passed = false;
         }
       }
@@ -1405,7 +1408,7 @@ public:
 
   void printVirtualJointPosition(const robot_state::RobotStatePtr &robot_state)
   {
-    ROS_INFO_STREAM_NAMED("temp","Virtual Joint Positions:");
+    ROS_INFO_STREAM_NAMED("hrp2_demos","Virtual Joint Positions:");
     const double* positions = robot_state->getJointPositions("virtual_joint");
     std::cout << "Position: " << std::endl;
     std::cout << "X: " << positions[0] << std::endl;
@@ -1430,10 +1433,10 @@ public:
 
     if (!constraint_sampler_)
     {
-      ROS_ERROR_STREAM_NAMED("temp","No constraint sampler loaded");
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","No constraint sampler loaded");
       exit(-1);
     }
-    ROS_INFO_STREAM_NAMED("temp","Chosen constraint sampler: " << constraint_sampler_->getName() );
+    ROS_INFO_STREAM_NAMED("hrp2_demos","Chosen constraint sampler: " << constraint_sampler_->getName() );
   }
 
 }; // class
@@ -1529,43 +1532,44 @@ int main(int argc, char **argv)
     bool loop = false;
     do
     {
-      ROS_INFO_STREAM_NAMED("demos","-----------------------------------------------");
+      std::cout << std::endl;
+      ROS_INFO_STREAM_NAMED("hrp2_demos","---------------------------------------------------------------------------------------");
       switch (mode)
       {
         case 1:
-          ROS_INFO_STREAM_NAMED("demos","1 - Whole body planning with MoveIt!");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","1 - Whole body planning with MoveIt!");
           client.genRandWholeBodyPlans(problems, verbose, use_experience, use_collisions);
           break;
         case 2:
-          ROS_INFO_STREAM_NAMED("demos","2 - Show the experience database visually in Rviz");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","2 - Show the experience database visually in Rviz");
           client.displayLightningPlans(problems, verbose);
           break;
         case 3:
-          ROS_WARN_STREAM_NAMED("temp","unknown");
+          ROS_WARN_STREAM_NAMED("hrp2_demos","unknown");
           break;
         case 4:
-          ROS_INFO_STREAM_NAMED("demos","1 - Plan to a pre-defined crouching position, fixed feet");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","1 - Plan to a pre-defined crouching position, fixed feet");
           client.genCrouching();
           break;
         case 5:
-          ROS_INFO_STREAM_NAMED("demos","5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)");
           client.genRandLegConfigurations();
           break;
         case 6:
-          ROS_INFO_STREAM_NAMED("demos","4 - Generate random positions and plan to them with MoveIt");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","4 - Generate random positions and plan to them with MoveIt");
           client.genRandMoveItPlan();
           break;
         case 7:
-          ROS_INFO_STREAM_NAMED("demos","7 - Sample single-foot-fixed poses of robot");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","7 - Sample single-foot-fixed poses of robot");
           client.genRandPoseGrounded(runs, problems, verbose);
           break;
         case 8:
-          ROS_INFO_STREAM_NAMED("demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");
           client.genIKRequestsSweep(runs, problems, seed);
           break;
         case 0:
         default:
-          ROS_INFO_STREAM_NAMED("demos","0 - Loop through all these modes continously");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","0 - Loop through all these modes continously");
           loop = true;
       }
 
