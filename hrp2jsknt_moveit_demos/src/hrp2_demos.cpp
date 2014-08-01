@@ -86,6 +86,44 @@ static const std::string BASE_LINK = "/odom";
 
 class HRP2Demos
 {
+private:
+
+  ros::NodeHandle nh_;
+
+  //moveit_msgs::DisplayRobotState display_robot_msg_;
+  //moveit_msgs::DisplayTrajectory display_trajectory_msg_;
+
+  robot_model_loader::RobotModelLoader robot_model_loader_;
+  robot_model::RobotModelPtr robot_model_;
+  robot_state::RobotStatePtr robot_state_;
+  robot_state::RobotStatePtr goal_state_;
+  robot_state::RobotStatePtr blank_state_;
+
+  robot_model::JointModelGroup* joint_model_group_; // selected by user
+  std::string planning_group_name_; // allow to change planning group from command line
+
+  robot_model::JointModelGroup* whole_body_group_; // hard-coded
+  std::string whole_body_group_name_; // hard-coded group for the whole robot including virtual joint
+
+  planning_scene::PlanningScenePtr planning_scene_;
+  planning_pipeline::PlanningPipelinePtr planning_pipeline_;
+
+  // For visualizing things in rviz
+  moveit_visual_tools::VisualToolsPtr visual_tools_;
+
+  // The visual tools for interfacing with Rviz
+  ompl_rviz_viewer::OmplRvizViewerPtr ompl_viewer_;
+
+  // Optional monitor to communicate with Rviz
+  planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
+
+  // Constraint sampler
+  constraint_samplers::ConstraintSamplerPtr constraint_sampler_;
+
+  // Tool for checking balance
+  moveit_humanoid_stability::HumanoidStabilityPtr humanoid_stability_;
+
+
 public:
   HRP2Demos(const std::string planning_group_name)
     : nh_("~")
@@ -120,7 +158,7 @@ public:
     // Allow time to startup
     ros::Duration(0.1).sleep();
   }
-  
+
   void resetRviz()
   {
     visual_tools_->deleteAllMarkers(); // clear all old markers
@@ -139,7 +177,6 @@ public:
   // Use two IK solvers to find leg positions
   void genRandLegConfigurations()
   {
-    createBlankState(); // for hideRobot
     /* NOTES
        z min crouch is -0.38
        z max stand is 0
@@ -169,7 +206,7 @@ public:
         break;
 
       // Hide Robot
-      hideRobot();
+      visual_tools_->hideRobot();
       ros::Duration(0.1).sleep();
 
       // Choose new configuration
@@ -216,7 +253,7 @@ public:
         {
           ROS_ERROR_STREAM_NAMED("temp","Did not find IK solution");
           // Hide Robot
-          hideRobot();
+          visual_tools_->hideRobot();
           ros::Duration(0.5).sleep();
         }
       }
@@ -228,7 +265,7 @@ public:
         //printVirtualJointPosition(robot_state_);
 
         // Hide Robot
-        hideRobot();
+        visual_tools_->hideRobot();
         ros::Duration(0.5).sleep();
       }
 
@@ -241,7 +278,6 @@ public:
   {
     setStateToGroupPose(goal_state_,  "reset_whole_body_fixed", joint_model_group_);
     setStateToGroupPose(robot_state_, "reset_whole_body_fixed", joint_model_group_);
-    createBlankState(); // for hideRobot
 
     // Generate random goal positions
     ros::Rate loop_rate(1);
@@ -250,7 +286,7 @@ public:
       //ROS_WARN_STREAM_NAMED("temp","RUN " << counter << " ------------------------------");
 
       // Reset
-      hideRobot();
+      visual_tools_->hideRobot();
       ros::Duration(1.0).sleep();
 
       // Make goal state crouching
@@ -342,19 +378,8 @@ public:
       humanoid_stability_.reset(new moveit_humanoid_stability::HumanoidStability(verbose, *robot_state_, visual_tools_));
   }
 
-  void genRandMotionPlans(int problems, bool verbose, bool use_experience, bool use_collisions)
+  void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions)
   {
-    for (std::size_t i = 0; i < problems; ++i)
-    {
-      genRandMotionPlans(verbose, use_experience, use_collisions);
-    }
-  }
-
-  // Whole body planning with MoveIt!
-  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 group:=whole_body verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
-  void genRandMotionPlans(bool verbose, bool use_experience, bool use_collisions)
-  {
-
     // Load planning scene monitor so that we can publish a collision enviornment to rviz
     if (!loadPlanningSceneMonitor())
       return;
@@ -370,8 +395,6 @@ public:
       visual_tools_->removeAllCollisionObjects(planning_scene_monitor_); // clear all old collision objects that might be visible in rviz
     }
 
-    //visual_tools_->removeAllCollisionObjects();
-
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
     //fixRobotStateFoot(goal_state_, 1.0, 0.5);
@@ -380,6 +403,68 @@ public:
     //loadConstraintSampler(verbose);
     loadConstraintSampler(false);
 
+    // Set custom validity checker for balance constraints
+    loadHumanoidStabilityChecker(verbose);
+    bool verbose_feasibility = true;
+    planning_scene_->setStateFeasibilityPredicate(humanoid_stability_->getStateFeasibilityFn());
+
+    // Load planning
+    loadPlanningPipeline(); // always call first
+
+    // Remember the planning context even after solving is done
+    planning_interface::PlanningContextPtr planning_context_handle;
+    // Remember all planning context handles so we can save to file in the end
+    std::set<planning_interface::PlanningContextPtr> planning_context_handles;
+
+    ompl::tools::LightningPtr lightning;
+
+    // Loop through planning
+    for (std::size_t i = 0; i < problems; ++i)
+    {
+      genRandWholeBodyPlans(verbose, use_experience, use_collisions, planning_context_handle);
+
+      // Save all contexts to a set
+      planning_context_handles.insert(planning_context_handle);
+      if (planning_context_handles.size() > 1)
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Unexpected: more than 1 planning context now exists");
+        exit(-1);
+      }
+
+      // Load ptrs on first pass
+      if (i == 0) 
+      {
+        ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
+        lightning = boost::dynamic_pointer_cast<ompl::tools::Lightning>(mbpc->getOMPLSimpleSetup());
+      }
+
+      // Debugging
+      lightning->printLogs();
+
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << "NEW PLAN STARTING ---------------------------------------------------------- " << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+    }
+
+    // Save the solutions to file
+    if (use_experience)
+    {
+      ROS_WARN_STREAM_NAMED("temp","Saving experience db...");
+
+      lightning->saveIfChanged();
+    }
+
+  }
+
+  // Whole body planning with MoveIt!
+  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 group:=whole_body verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
+  void genRandWholeBodyPlans(bool verbose, bool use_experience, bool use_collisions, planning_interface::PlanningContextPtr &planning_context_handle)
+  {
+    // Use constraint sampler to find valid random state
     int attempts = 10000;
     if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
     {
@@ -391,37 +476,24 @@ public:
       ROS_ERROR_STREAM_NAMED("temp","Unable to find valid goal state");
       return;
     }
-    
-    // Make random goal state
-    //if (!setRandomValidState(goal_state_, joint_model_group_))
-    //  return;
-    // Make random start state
-    //if (!setRandomValidState(robot_state_, joint_model_group_))
-    //  return;
 
+    // Updase virtual joint transform to fake base
     robot_state_->updateStateWithFakeBase();
-    robot_state_->updateStateWithFakeBase();
-    //robot_state_->update(true);
-    //goal_state_->update(true);
+    goal_state_->updateStateWithFakeBase();
 
     // Visualize
-    visual_tools_->publishRobotState(robot_state_);
-    std::cout << "Visualizing robot state " << std::endl;
-    ros::Duration(2).sleep();
+    if (verbose)
+    {
+      visual_tools_->publishRobotState(robot_state_);
+      std::cout << "Visualizing robot state " << std::endl;
+      ros::Duration(1).sleep();
 
-    visual_tools_->publishRobotState(goal_state_);
-    std::cout << "Visualizing goal state " << std::endl;
-    ros::Duration(2).sleep();
+      visual_tools_->publishRobotState(goal_state_);
+      std::cout << "Visualizing goal state " << std::endl;
+      ros::Duration(1).sleep();
 
-    createBlankState(); // for hideRobot
-    hideRobot();
-
-
-    // Set custom validity checker for balance constraints
-    loadHumanoidStabilityChecker(verbose); 
-    bool verbose_feasibility = true;
-    planning_scene_->setStateFeasibilityPredicate(humanoid_stability_->getStateFeasibilityFn());
-
+      visual_tools_->hideRobot();
+    }
 
     // Create plannign request
     moveit_msgs::MotionPlanResponse response;
@@ -443,15 +515,11 @@ public:
     req.planner_id = "RRTConnectkConfigDefault";
     req.group_name = planning_group_name_;
     req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
-    req.allowed_planning_time = 30;
+    req.allowed_planning_time = 60;
     req.use_experience = use_experience;
 
     // Call pipeline
-    loadPlanningPipeline(); // always call first
     std::vector<std::size_t> dummy;
-
-    // Remember the planning context even after solving is done
-    planning_interface::PlanningContextPtr planning_context_handle;
 
     // SOLVE
     planning_pipeline_->generatePlan(planning_scene_, req, res, dummy, planning_context_handle);
@@ -470,7 +538,7 @@ public:
 
       // Visualize the trajectory
       ROS_INFO("Visualizing the trajectory");
-      hideRobot(); // hide the other robot so that we can see the trajectory
+      visual_tools_->hideRobot(); // hide the other robot so that we can see the trajectory
       visual_tools_->publishTrajectoryPath(response.trajectory, true);
     }
     else
@@ -478,21 +546,14 @@ public:
       ROS_WARN_STREAM_NAMED("temp","Not visualizing because not in verbose mode");
     }
 
-    // Save the solutions to file
-    //ROS_WARN_STREAM_NAMED("temp","Saving experience db...");
-    ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
 
-    if (use_experience)
-    {
-      ompl::tools::LightningPtr lightning = boost::dynamic_pointer_cast<ompl::tools::Lightning>(mbpc->getOMPLSimpleSetup());
-      lightning->saveIfChanged();
-    }
   }
 
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=2 group:=left_arm verbose:=1
   void displayLightningPlans(int problems, bool verbose)
   {
-    robot_state_->setToDefaultValues();
+    // All we care about is the trajectory robot
+    visual_tools_->hideRobot();
 
     // Create a state space describing our robot's planning group
     ompl_interface::ModelBasedStateSpaceSpecification model_ss_spec(robot_model_, joint_model_group_);
@@ -501,7 +562,6 @@ public:
 
     // Setup the state space
     model_state_space->setup();
-    //model_state_space->printSettings(std::cout);
 
     ROS_DEBUG_STREAM_NAMED("hrp2_demos","Model Based State Space has dimensions: " << model_state_space->getDimension());
 
@@ -513,98 +573,28 @@ public:
     std::vector<ompl::base::PlannerDataPtr> paths;
     lightning.getAllPaths(paths);
 
-    ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths: " << paths.size());
+    ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths to publish: " << paths.size());
+
+    // Load the OMPL visualizer
+    ompl_viewer_.reset(new ompl_rviz_viewer::OmplRvizViewer(BASE_LINK, MARKER_TOPIC, robot_model_));
+    ompl_viewer_->loadRobotStatePub("/hrp2_demos");
+    ompl_viewer_->setStateSpace(model_state_space);
 
     // Get tip links for this setup
     std::vector<const robot_model::LinkModel*> tips;
-    getEndEffectorTips(tips, joint_model_group_);
+    joint_model_group_->getEndEffectorTips(tips);
     std::cout << "Found " << tips.size() << " tips" << std::endl;
-
-    // Assume the last link in the joint model group is the tip
-    const moveit::core::LinkModel *tip_link = joint_model_group_->getLinkModels().back();
 
     bool show_trajectory_animated = verbose;
 
-    Eigen::Affine3d pose;
-    std::vector< std::vector<geometry_msgs::Point> > paths_msgs(tips.size()); // each tip has its own path of points
-    robot_trajectory::RobotTrajectoryPtr robot_trajectory;
-
-    // Enable the robot state to have a foot base
-    //fixRobotStateFoot(robot_state_, 1, 1);
-
+    // Loop through each path
     for (std::size_t path_id = 0; path_id < std::min(int(paths.size()), problems); ++path_id)
     {
       std::cout << "Processing path " << path_id << std::endl;
+      ompl_viewer_->publishRobotPath(paths[path_id], joint_model_group_, tips, show_trajectory_animated);
+    }
 
-      // Clear each tip's individual tip out
-      for (std::size_t tip_id = 0; tip_id < tips.size(); ++tip_id)
-      {
-        paths_msgs[tip_id].clear();
-      }
-
-      // Optionally save the trajectory
-      if (show_trajectory_animated)
-      {
-        robot_trajectory.reset(new robot_trajectory::RobotTrajectory(robot_model_, whole_body_group_name_));
-      }
-
-      // Each state in the path
-      for (std::size_t state_id = 0; state_id < paths[path_id]->numVertices(); ++state_id)
-      {
-        // Check if program is shutting down
-        if (!ros::ok())
-          return;
-
-        // Convert to robot state
-        model_state_space->copyToRobotState( *robot_state_, paths[path_id]->getVertex(state_id).getState() );
-        robot_state_->update(true); // force update so that the virtual joint is updated to the grounded foot
-
-        visual_tools_->publishRobotState(robot_state_);
-
-        // Each tip in the robot state
-        for (std::size_t tip_id = 0; tip_id < tips.size(); ++tip_id)
-        {
-
-          // Forward kinematics
-          pose = robot_state_->getGlobalLinkTransform(tips[tip_id]);
-
-          // Optionally save the trajectory
-          if (show_trajectory_animated)
-          {
-            robot_state::RobotState robot_state_copy = *robot_state_;
-            robot_trajectory->addSuffixWayPoint(robot_state_copy, 0.05); // 1 second interval
-          }
-
-          // Debug pose
-          //std::cout << "Pose: " << state_id << " of link " << tip_link->getName() << ": \n" << pose.translation() << std::endl;
-
-          paths_msgs[tip_id].push_back( visual_tools_->convertPose(pose).position );
-
-          // Show goal state arrow
-          if (state_id == paths[path_id]->numVertices() -1)
-          {
-            visual_tools_->publishArrow( pose, moveit_visual_tools::BLACK );
-          }
-        }
-      }
-
-      for (std::size_t tip_id = 0; tip_id < tips.size(); ++tip_id)
-      {
-        visual_tools_->publishPath( paths_msgs[tip_id], moveit_visual_tools::RAND, moveit_visual_tools::SMALL );
-        ros::Duration(0.05).sleep();
-        visual_tools_->publishSpheres( paths_msgs[tip_id], moveit_visual_tools::BLUE, moveit_visual_tools::SMALL );
-        ros::Duration(0.05).sleep();
-      }
-
-      // Debugging - Convert to trajectory
-      if (show_trajectory_animated)
-      {
-        visual_tools_->publishTrajectoryPath(*robot_trajectory, true);
-      }
-
-    } // for each path
-
-  }
+  } // function
 
   bool setRandomValidState(robot_state::RobotStatePtr &state, const robot_model::JointModelGroup* jmg)
   {
@@ -647,8 +637,6 @@ public:
   // Plan robot moving to crouching position
   void genCrouching()
   {
-    createBlankState(); // for hide robot
-
     robot_state_->setToDefaultValues();
     goal_state_->setToDefaultValues();
 
@@ -662,7 +650,7 @@ public:
     visual_tools_->publishRobotState(goal_state_);
     ros::Duration(2).sleep();
 
-    hideRobot();
+    visual_tools_->hideRobot();
 
     moveit_msgs::MotionPlanResponse response;
     if (createPlanCrouch(response))
@@ -692,9 +680,7 @@ public:
   bool loadPlanningSceneMonitor()
   {
     // Allows us to sycronize to Rviz and also publish collision objects to ourselves
-    std::cout << std::endl;
-    std::cout << "------------------------------------------------------------------------- " << std::endl;
-    std::cout << "Loading Planning Scene Monitor " << std::endl;
+    ROS_DEBUG_STREAM_NAMED("temp","Loading Planning Scene Monitor -------------------------------------------- ");
     planning_scene_monitor_.reset(new planning_scene_monitor::PlanningSceneMonitor(planning_scene_, ROBOT_DESCRIPTION,
                                                                                    boost::shared_ptr<tf::Transformer>(), "hrp2_demos"));
     ros::spinOnce();
@@ -713,9 +699,7 @@ public:
       ROS_ERROR_STREAM_NAMED("temp","Planning scene not configured");
       return false;
     }
-    std::cout << "------------------------------------------------------------------------- " << std::endl;
     std::cout << std::endl;
-
     ros::Duration(0.1).sleep();
     ros::spinOnce();
 
@@ -724,28 +708,9 @@ public:
 
   void jskLabCollisionEnvironment()
   {
-    // Collision
-    {
-      planning_scene_monitor::LockedPlanningSceneRW ps(planning_scene_monitor_);
-      if (ps)
-      {
-        //static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2.scene";
-        static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2-without-floor.scene";
-
-        std::ifstream fin(path.c_str());
-        if (fin.good())
-        {
-          ps->loadGeometryFromStream(fin);
-          fin.close();
-          ROS_INFO("Loaded scene geometry from '%s'", path.c_str());
-        }
-        else
-          ROS_WARN("Unable to load scene geometry from '%s'", path.c_str());
-      }
-      else
-        ROS_WARN_STREAM_NAMED("temp","Unable to get locked planning scene RW");
-    }
-    planning_scene_monitor_->triggerSceneUpdateEvent(planning_scene_monitor::PlanningSceneMonitor::UPDATE_SCENE);
+    //static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2.scene";
+    static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2-without-floor.scene";
+    visual_tools_->publishCollisionSceneFromFile(path, planning_scene_monitor_);
   }
 
   void fixRobotStateFoot(robot_state::RobotStatePtr &robot_state, double x, double y)
@@ -765,7 +730,7 @@ public:
     default_foot_transform.translation().y() = y;
     default_foot_transform.translation().z() = 0.1; //0.15 for floor obstacle
     //default_foot_transform.translation().z() = 0.0; //0.15 for floor obstacle
- 
+
     // Set robot_state to maintain this location
     robot_state->enableFakeBaseTransform(foot, start_leg_joint, default_foot_transform);
   }
@@ -783,7 +748,7 @@ public:
     // Benchmark time
     ros::Time start_time2;
     start_time2 = ros::Time::now();
-    
+
     for (std::size_t i = 0; i < problems; ++i)
     {
       if (!ros::ok())
@@ -793,7 +758,7 @@ public:
       robot_state_->setToRandomPositions(joint_model_group_);
 
       // force update
-      robot_state_->updateStateWithFakeBase();      
+      robot_state_->updateStateWithFakeBase();
 
       if (verbose)
       {
@@ -844,14 +809,14 @@ public:
     for (int problem_id = 0; problem_id < problems && ros::ok(); problem_id++)
     {
       // Make random start state
-      //setRandomValidState(robot_state_, joint_model_group_);      
-     
+      //setRandomValidState(robot_state_, joint_model_group_);
+
       // Display result
       if (constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
       {
         ROS_INFO_STREAM_NAMED("temp","Found a valid sample " << problem_id);
         std::cout << std::endl;
-        
+
         if (verbose || true)
         {
           ROS_INFO_STREAM_NAMED("hrp2_demos","Publish robot " << problem_id);
@@ -861,7 +826,7 @@ public:
         }
 
         // Save to file
-        // DESIRED ORDER FOR JSK: RLEG_JOINT0  LLEG_JOINT0  CHEST_JOINT0  HEAD_JOINT0  RARM_JOINT0  LARM_JOINT0        
+        // DESIRED ORDER FOR JSK: RLEG_JOINT0  LLEG_JOINT0  CHEST_JOINT0  HEAD_JOINT0  RARM_JOINT0  LARM_JOINT0
         std::vector< std::string > joint_groups;
         joint_groups.push_back("right_leg");
         joint_groups.push_back("left_leg");
@@ -980,46 +945,6 @@ public:
     exit(-1);
   }
 
-  bool getEndEffectorTips(std::vector<std::string> &tips, const robot_model::JointModelGroup* joint_model_group)
-  {
-    // Get a vector of tip links
-    std::vector<const robot_model::LinkModel*> tip_links;
-    if (!getEndEffectorTips(tip_links, joint_model_group))
-      return false;
-
-    // Convert to string names
-    tips.clear();
-    for (std::size_t i = 0; i < tip_links.size(); ++i)
-    {
-      tips.push_back(tip_links[i]->getName());
-    }
-    return true;
-  }
-
-  bool getEndEffectorTips(std::vector<const robot_model::LinkModel*> &tips, const robot_model::JointModelGroup* joint_model_group)
-  {
-    for (std::size_t i = 0; i < joint_model_group->getAttachedEndEffectorNames().size(); ++i)
-    {
-      const robot_model::JointModelGroup *eef = robot_model_->getEndEffector(joint_model_group->getAttachedEndEffectorNames()[i]);
-      if (!eef)
-      {
-        ROS_ERROR_STREAM_NAMED("temp","Unable to find joint model group for eef");
-        return false;
-      }
-      const std::string &eef_parent = eef->getEndEffectorParentGroup().second;
-
-      const robot_model::LinkModel* eef_link = robot_model_->getLinkModel(eef_parent);
-      if (!eef_link)
-      {
-        ROS_ERROR_STREAM_NAMED("temp","Unable to find end effector link for eef");
-        return false;
-      }
-
-      tips.push_back(eef_link);
-    }
-    return true;
-  }
-
   bool genIKRequests(int problems, std::size_t seed)
   {
     // Get the starting pose that corresponds to selected planning group
@@ -1041,10 +966,10 @@ public:
 
     // Get tip links for this setup
     std::vector<const robot_model::LinkModel*> tips;
-    getEndEffectorTips(tips, joint_model_group_);
+    joint_model_group_->getEndEffectorTips(tips);
 
     std::vector<std::string> tip_names;
-    getEndEffectorTips(tip_names, joint_model_group_);
+    joint_model_group_->getEndEffectorTips(tip_names);
 
     // Choose random end effector goal positions for left and right arm ------------------
 
@@ -1273,11 +1198,6 @@ public:
     }
   }
 
-  void hideRobot()
-  {
-    visual_tools_->publishRobotState(blank_state_);
-  }
-
   void setStateInPlace(robot_state::RobotStatePtr &goal_state)
   {
     double x = goal_state->getVariablePosition("virtual_joint/trans_x");
@@ -1483,23 +1403,6 @@ public:
     return true;
   }
 
-  void createBlankState()
-  {
-    if (!blank_state_) // load once
-    {
-      // Copy the robot state then move it way into the distance
-      blank_state_.reset(new robot_state::RobotState(*robot_state_));
-
-      double x = blank_state_->getVariablePosition("virtual_joint/trans_x");
-      x += 20;
-      blank_state_->setVariablePosition("virtual_joint/trans_x",x);
-
-      double y = blank_state_->getVariablePosition("virtual_joint/trans_y");
-      y += 20;
-      blank_state_->setVariablePosition("virtual_joint/trans_y",y);
-    }
-  }
-
   void printVirtualJointPosition(const robot_state::RobotStatePtr &robot_state)
   {
     ROS_INFO_STREAM_NAMED("temp","Virtual Joint Positions:");
@@ -1514,7 +1417,7 @@ public:
     std::cout << "Z: " << positions[5] << std::endl;
     std::cout << "W: " << positions[6] << std::endl;
   }
-  
+
   void loadConstraintSampler(bool verbose)
   {
     // Create a constraint sampler for random poses
@@ -1522,7 +1425,7 @@ public:
     constraint_sampler_manager_loader::ConstraintSamplerManagerLoaderPtr constraint_sampler_manager_loader_;
     constraint_sampler_manager_loader_.reset(new constraint_sampler_manager_loader::ConstraintSamplerManagerLoader());
     constraint_samplers::ConstraintSamplerManagerPtr csm = constraint_sampler_manager_loader_->getConstraintSamplerManager();
-    constraint_sampler_ = csm->selectSampler(planning_scene_, planning_group_name_, constr);    
+    constraint_sampler_ = csm->selectSampler(planning_scene_, planning_group_name_, constr);
     constraint_sampler_->setVerbose(verbose);
 
     if (!constraint_sampler_)
@@ -1532,43 +1435,6 @@ public:
     }
     ROS_INFO_STREAM_NAMED("temp","Chosen constraint sampler: " << constraint_sampler_->getName() );
   }
-
-private:
-
-  ros::NodeHandle nh_;
-
-  //moveit_msgs::DisplayRobotState display_robot_msg_;
-  //moveit_msgs::DisplayTrajectory display_trajectory_msg_;
-
-  robot_model_loader::RobotModelLoader robot_model_loader_;
-  robot_model::RobotModelPtr robot_model_;
-  robot_state::RobotStatePtr robot_state_;
-  robot_state::RobotStatePtr goal_state_;
-  robot_state::RobotStatePtr blank_state_;
-
-  robot_model::JointModelGroup* joint_model_group_; // selected by user
-  std::string planning_group_name_; // allow to change planning group from command line
-
-  robot_model::JointModelGroup* whole_body_group_; // hard-coded
-  std::string whole_body_group_name_; // hard-coded group for the whole robot including virtual joint
-
-  planning_scene::PlanningScenePtr planning_scene_;
-  planning_pipeline::PlanningPipelinePtr planning_pipeline_;
-
-  // For visualizing things in rviz
-  moveit_visual_tools::VisualToolsPtr visual_tools_;
-
-  // The visual tools for interfacing with Rviz
-  //ompl_rviz_viewer::OmplRvizViewerPtr ompl_viewer_;
-
-  // Optional monitor to communicate with Rviz
-  planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
-
-  // Constraint sampler
-  constraint_samplers::ConstraintSamplerPtr constraint_sampler_;
-
-  // Tool for checking balance
-  moveit_humanoid_stability::HumanoidStabilityPtr humanoid_stability_;
 
 }; // class
 
@@ -1668,7 +1534,7 @@ int main(int argc, char **argv)
       {
         case 1:
           ROS_INFO_STREAM_NAMED("demos","1 - Whole body planning with MoveIt!");
-          client.genRandMotionPlans(problems, verbose, use_experience, use_collisions);
+          client.genRandWholeBodyPlans(problems, verbose, use_experience, use_collisions);
           break;
         case 2:
           ROS_INFO_STREAM_NAMED("demos","2 - Show the experience database visually in Rviz");
@@ -1716,8 +1582,7 @@ int main(int argc, char **argv)
     // Check if ROS is shutting down
     if (!ros::ok())
       break;
-    std::cout << "debug final" << std::endl;
-    return 0;
+
     exit(0); // temp
 
     // Prompt user

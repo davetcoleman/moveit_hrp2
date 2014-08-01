@@ -5,11 +5,9 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /MotionPlanning1
-        - /MotionPlanning1/Scene Geometry1
-        - /MotionPlanning1/Planning Request1
         - /MotionPlanning1/Planned Path1
+        - /StateSampler State1
         - /HRP2 Demos Marker1/Namespaces1
-        - /PlanningScene1/Scene Geometry1
         - /TF1/Tree1
       Splitter Ratio: 0.507622
     Tree Height: 1222
@@ -379,7 +377,7 @@ Visualization Manager:
         Scene Alpha: 0.9
         Scene Color: 50; 230; 50
         Scene Display Time: 0.2
-        Show Scene Geometry: false
+        Show Scene Geometry: true
         Voxel Coloring: Z-Axis
         Voxel Rendering: Occupied Voxels
       Scene Robot:
@@ -1534,7 +1532,7 @@ Visualization Manager:
       Name: StateSampler State
       Robot Alpha: 0.5
       Robot Description: robot_description
-      Robot State Topic: /hrp2_state_sampler
+      Robot State Topic: /humanoid_constraint_sample_robots
       Show All Links: true
       Show Highlights: true
       Value: true
@@ -1552,10 +1550,9 @@ Visualization Manager:
       Marker Topic: /hrp2_visual_markers
       Name: HRP2 Demos Marker
       Namespaces:
-        COM: true
+        Arrow: true
         Path: true
-        Rectangle: true
-        Text: true
+        Spheres: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -1564,303 +1561,8 @@ Visualization Manager:
       Name: MoveIt Contact Points
       Namespaces:
         LARM_LINK4=LARM_LINK6: true
+        RARM_LINK4=RARM_LINK6: true
       Queue Size: 100
-      Value: true
-    - Class: moveit_rviz_plugin/PlanningScene
-      Enabled: true
-      Move Group Namespace: ""
-      Name: PlanningScene
-      Planning Scene Topic: /hrp2jsknt_moveit_demos/test_planning_scene
-      Robot Description: robot_description
-      Scene Geometry:
-        Scene Alpha: 0.9
-        Scene Color: 50; 230; 50
-        Scene Display Time: 0.2
-        Show Scene Geometry: true
-        Voxel Coloring: Z-Axis
-        Voxel Rendering: Occupied Voxels
-      Scene Robot:
-        Attached Body Color: 150; 50; 150
-        Links:
-          All Links Enabled: true
-          BODY:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          CHEST_LINK0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          CHEST_LINK1:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          Expand Joint Details: false
-          Expand Link Details: false
-          Expand Tree: false
-          HEAD_LINK0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          HEAD_LINK1:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LARM_EEF_CHILD:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          LARM_EEF_PARENT:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          LARM_LINK0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LARM_LINK1:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LARM_LINK2:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LARM_LINK3:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LARM_LINK4:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LARM_LINK5:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LARM_LINK6:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LARM_LINK7:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LLEG_LINK0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LLEG_LINK1:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LLEG_LINK2:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LLEG_LINK3:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LLEG_LINK4:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LLEG_LINK5:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          LLEG_LINK6:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_INDEXMP_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_INDEXMP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_INDEXPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_MIDDLEPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_THUMBCM_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_THUMBCM_Y_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          Link Tree Style: Links in Alphabetic Order
-          RARM_EEF_CHILD:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          RARM_EEF_PARENT:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          RARM_LINK0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RARM_LINK1:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RARM_LINK2:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RARM_LINK3:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RARM_LINK4:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RARM_LINK5:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RARM_LINK6:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RARM_LINK7:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RLEG_LINK0:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RLEG_LINK1:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RLEG_LINK2:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RLEG_LINK3:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RLEG_LINK4:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RLEG_LINK5:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          RLEG_LINK6:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_INDEXMP_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_INDEXMP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_INDEXPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_MIDDLEPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_THUMBCM_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_THUMBCM_Y_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          xtion_depth_frame:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          xtion_depth_optical_frame:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          xtion_link:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          xtion_rgb_frame:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-          xtion_rgb_optical_frame:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-        Robot Alpha: 0.5
-        Show Robot Collision: false
-        Show Robot Visual: false
       Value: true
     - Class: rviz/TF
       Enabled: false
@@ -1891,22 +1593,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 9.37128
+      Distance: 4.49663
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.594892
-        Y: 1.37181
-        Z: -1.49012e-06
+        X: 1.31086
+        Y: 2.20989
+        Z: -1.2517e-06
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.519798
+      Pitch: 0.329798
       Target Frame: BODY
       Value: XYOrbit (rviz)
-      Yaw: 5.10359
+      Yaw: 5.84172
     Saved: ~
 Window Geometry:
   Displays:
@@ -1922,5 +1624,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1280
-  X: -7
+  X: -3
   Y: 24

@@ -26,6 +26,11 @@
     <arg name="pipeline" value="ompl" />
   </include>
 
+  <!-- Sensors Functionality -->
+  <include ns="hrp2jsknt_moveit_demos" file="$(find hrp2jsknt_moveit_config)/launch/sensor_manager.launch.xml" >
+    <arg name="moveit_sensor_manager" value="HRP2JSKNT" /> 
+  </include>
+
   <node name="hrp2jsknt_moveit_demos" pkg="hrp2jsknt_moveit_demos" type="hrp2_demos" respawn="false" 
 	launch-prefix="$(arg launch_prefix)" output="screen" 
 	args="--mode $(arg mode) --seed $(arg seed) --runs $(arg runs) --problems $(arg problems) --verbose $(arg verbose) --group $(arg group)
