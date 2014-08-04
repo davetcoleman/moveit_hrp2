@@ -77,6 +77,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/pointer_cast.hpp>
 
+// C++
+#include <limits>       // std::numeric_limits
+
 namespace hrp2jsknt_moveit_demos
 {
 
@@ -350,7 +353,7 @@ public:
       req.allowed_planning_time = 30;
 
       // Call pipeline
-      loadPlanningPipeline(); // always call first
+      loadPlanningPipeline(); // always call before using generatePlan()
       planning_pipeline_->generatePlan(planning_scene_, req, res);
 
       // Check that the planning was successful
@@ -395,6 +398,9 @@ public:
       visual_tools_->removeAllCollisionObjects(planning_scene_monitor_); // clear all old collision objects that might be visible in rviz
     }
 
+    std::ofstream logging_file;
+    logging_file.open("/home/dave/ros/lightning_logging.csv");
+
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
     //fixRobotStateFoot(goal_state_, 1.0, 0.5);
@@ -410,7 +416,7 @@ public:
 
     // Load planning
     ROS_DEBUG_STREAM_NAMED("hrp2_demos","Loading planning pipeline");
-    loadPlanningPipeline(); // always call first
+    loadPlanningPipeline(); // always call before using generatePlan()
 
     // Remember the planning context even after solving is done
     planning_interface::PlanningContextPtr planning_context_handle;
@@ -422,10 +428,13 @@ public:
     // Loop through planning
     for (std::size_t i = 0; i < problems; ++i)
     {
+      if (!ros::ok())
+        break;
+
       std::cout << std::endl;
       std::cout << std::endl;
       std::cout << std::endl;
-      std::cout << "NEW PLAN STARTING ---------------------------------------------------------- " << std::endl;
+      std::cout << "NEW PLAN STARTING (" << i+1 << " of " << problems << ")----------------------------------------------------- " << std::endl;
       std::cout << std::endl;
       std::cout << std::endl;
       std::cout << std::endl;
@@ -441,22 +450,35 @@ public:
       }
 
       // Load ptrs on first pass
-      if (i == 0) 
+      if (i == 0 && (use_experience || true))
       {
         ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
         lightning = boost::dynamic_pointer_cast<ompl::tools::Lightning>(mbpc->getOMPLSimpleSetup());
       }
 
       // Debugging
-      std::cout << std::endl;
-      lightning->printLogs();
+      if (use_experience || true)
+      {
+        std::cout << std::endl;
+        lightning->printLogs();
+        lightning->saveDataLog(logging_file);
+      }
+
+      // Save database every 50 paths
+      if ((i+1) % 50 == 0 && (use_experience || true))
+      {
+        ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
+        lightning->saveIfChanged();
+      }
+
     }
 
-    // Save the solutions to file
-    if (use_experience)
+    logging_file.close();
+
+    // Save the solutions to file before shutting down
+    if (use_experience || true)
     {
       ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
-
       lightning->saveIfChanged();
     }
 
@@ -510,7 +532,7 @@ public:
 
     // Goal constraint
     double tolerance_pose = 0.0001;
-    moveit_msgs::Constraints goal_constraint = kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_, 
+    moveit_msgs::Constraints goal_constraint = kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_,
                                                                                                tolerance_pose, tolerance_pose);
     req.goal_constraints.push_back(goal_constraint);
 
@@ -518,7 +540,7 @@ public:
     req.planner_id = "RRTConnectkConfigDefault";
     req.group_name = planning_group_name_;
     req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
-    req.allowed_planning_time = 60;
+    req.allowed_planning_time = 10; // second
     req.use_experience = use_experience;
 
     // Call pipeline
@@ -531,22 +553,26 @@ public:
     if(res.error_code_.val != res.error_code_.SUCCESS)
     {
       ROS_ERROR("Could not compute plan successfully =======================================================");
-      ROS_INFO_STREAM_NAMED("hrp2_demos","Attempting to visualize trajectory anyway...");
+      if (verbose)
+        ROS_INFO_STREAM_NAMED("hrp2_demos","Attempting to visualize trajectory anyway...");
     }
 
-    if (verbose || true) // always show trajectory
+    if (verbose)
     {
       response.trajectory = moveit_msgs::RobotTrajectory();
       res.getMessage(response);
 
+      //std::cout << "Trajectory debug:\n " << response.trajectory << std::endl;
+
       // Visualize the trajectory
       ROS_INFO("Visualizing the trajectory");
-      visual_tools_->hideRobot(); // hide the other robot so that we can see the trajectory
+      //visual_tools_->hideRobot(); // hide the other robot so that we can see the trajectory TODO bug?
+
       visual_tools_->publishTrajectoryPath(response.trajectory, true);
     }
     else
     {
-      ROS_WARN_STREAM_NAMED("hrp2_demos","Not visualizing because not in verbose mode");
+      ROS_INFO_STREAM_NAMED("hrp2_demos","Not visualizing because not in verbose mode");
     }
 
 
@@ -591,6 +617,7 @@ public:
     bool show_trajectory_animated = verbose;
 
     // Loop through each path
+    problems = !problems ? std::numeric_limits<int>::max() : problems; // if 0, show all problems
     for (std::size_t path_id = 0; path_id < std::min(int(paths.size()), problems); ++path_id)
     {
       std::cout << "Processing path " << path_id << std::endl;
@@ -692,10 +719,14 @@ public:
     if (planning_scene_monitor_->getPlanningScene())
     {
       // Optional monitors to start:
-      planning_scene_monitor_->startWorldGeometryMonitor();
+      bool use_octomap_monitor = false; // this prevents a /tf warning
+      planning_scene_monitor_->startWorldGeometryMonitor(planning_scene_monitor::PlanningSceneMonitor::DEFAULT_COLLISION_OBJECT_TOPIC,
+                                                         planning_scene_monitor::PlanningSceneMonitor::DEFAULT_PLANNING_SCENE_WORLD_TOPIC,
+                                                         use_octomap_monitor);
       //planning_scene_monitor_->startSceneMonitor("/move_group/monitored_planning_scene");
       //planning_scene_monitor_->startStateMonitor("/joint_states", "/attached_collision_object");
-      planning_scene_monitor_->startPublishingPlanningScene(planning_scene_monitor::PlanningSceneMonitor::UPDATE_SCENE, "test_planning_scene");
+      planning_scene_monitor_->startPublishingPlanningScene(planning_scene_monitor::PlanningSceneMonitor::UPDATE_SCENE,
+                                                            "test_planning_scene");
     }
     else
     {
@@ -749,8 +780,8 @@ public:
     }
 
     // Benchmark time
-    ros::Time start_time2;
-    start_time2 = ros::Time::now();
+    ros::Time start_time;
+    start_time = ros::Time::now();
 
     for (std::size_t i = 0; i < problems; ++i)
     {
@@ -772,8 +803,8 @@ public:
     }
 
     // Benchmark time
-    double duration2 = (ros::Time::now() - start_time2).toSec();
-    ROS_INFO_STREAM_NAMED("","Total time: " << duration2 << " seconds averaging " << duration2/problems << " seconds per rand sample");
+    double duration = (ros::Time::now() - start_time).toSec();
+    ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds averaging " << duration/problems << " seconds per rand sample");
   }
 
   /**
@@ -804,7 +835,10 @@ public:
     loadConstraintSampler(verbose);
 
     // Load a file to save the robot states to
-    std::ofstream ostream("/home/dave/ros/stable_robot_states.dat");
+    bool save_to_file = false;
+    std::ofstream robot_states_file;
+    if (save_to_file)
+      robot_states_file.open("/home/dave/ros/stable_robot_states.dat");
 
     ros::Time start_time;
     start_time = ros::Time::now();
@@ -830,16 +864,19 @@ public:
 
         // Save to file
         // DESIRED ORDER FOR JSK: RLEG_JOINT0  LLEG_JOINT0  CHEST_JOINT0  HEAD_JOINT0  RARM_JOINT0  LARM_JOINT0
-        std::vector< std::string > joint_groups;
-        joint_groups.push_back("right_leg");
-        joint_groups.push_back("left_leg");
-        joint_groups.push_back("torso");
-        joint_groups.push_back("head");
-        joint_groups.push_back("right_arm");
-        joint_groups.push_back("left_arm");
-        joint_groups.push_back("left_hand");
-        joint_groups.push_back("right_hand");
-        robotStateToStream(*robot_state_, ostream, joint_groups, problem_id == 0, " ");
+        if (save_to_file)
+        {
+          std::vector< std::string > joint_groups;
+          joint_groups.push_back("right_leg");
+          joint_groups.push_back("left_leg");
+          joint_groups.push_back("torso");
+          joint_groups.push_back("head");
+          joint_groups.push_back("right_arm");
+          joint_groups.push_back("left_arm");
+          joint_groups.push_back("left_hand");
+          joint_groups.push_back("right_hand");
+          robotStateToStream(*robot_state_, robot_states_file, joint_groups, problem_id == 0, " ");
+        }
       }
       else
       {
@@ -851,7 +888,8 @@ public:
     double duration = (ros::Time::now() - start_time).toSec();
     ROS_INFO_STREAM_NAMED("","Total time: " << duration << " seconds. Average sample time: " << (duration/double(problems)) << " s");
 
-    ostream.close();
+    if (save_to_file)
+      robot_states_file.close();
   }
 
   // Set every joint in the group to the same joint value
@@ -1391,7 +1429,7 @@ public:
     req.allowed_planning_time = 30;
 
     // Call pipeline
-    loadPlanningPipeline(); // always call first
+    loadPlanningPipeline(); // always call before using generatePlan()
     planning_pipeline_->generatePlan(planning_scene_, req, res);
 
     // Check that the planning was successful
@@ -1536,6 +1574,10 @@ int main(int argc, char **argv)
       ROS_INFO_STREAM_NAMED("hrp2_demos","---------------------------------------------------------------------------------------");
       switch (mode)
       {
+        case 0:
+          ROS_INFO_STREAM_NAMED("hrp2_demos","0 - Quit");
+          exit(0);
+          break;
         case 1:
           ROS_INFO_STREAM_NAMED("hrp2_demos","1 - Whole body planning with MoveIt!");
           client.genRandWholeBodyPlans(problems, verbose, use_experience, use_collisions);
@@ -1545,10 +1587,11 @@ int main(int argc, char **argv)
           client.displayLightningPlans(problems, verbose);
           break;
         case 3:
-          ROS_WARN_STREAM_NAMED("hrp2_demos","unknown");
+          ROS_WARN_STREAM_NAMED("hrp2_demos","3 - Test foot fixed feature");
+          client.testFixedFootFeature(runs, problems, verbose);
           break;
         case 4:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","1 - Plan to a pre-defined crouching position, fixed feet");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","4 - Plan to a pre-defined crouching position, fixed feet");
           client.genCrouching();
           break;
         case 5:
@@ -1556,7 +1599,7 @@ int main(int argc, char **argv)
           client.genRandLegConfigurations();
           break;
         case 6:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","4 - Generate random positions and plan to them with MoveIt");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","6 - Generate random positions and plan to them with MoveIt");
           client.genRandMoveItPlan();
           break;
         case 7:
@@ -1567,9 +1610,10 @@ int main(int argc, char **argv)
           ROS_INFO_STREAM_NAMED("hrp2_demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");
           client.genIKRequestsSweep(runs, problems, seed);
           break;
-        case 0:
+
+        case 20:
         default:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","0 - Loop through all these modes continously");
+          ROS_INFO_STREAM_NAMED("hrp2_demos","20 - Loop through all these modes continously");
           loop = true;
       }
 
@@ -1590,7 +1634,7 @@ int main(int argc, char **argv)
     exit(0); // temp
 
     // Prompt user
-    std::cout << "Last mode was " << mode << ". Next demo mode (0-8, 9 to quit):";
+    std::cout << "Last mode was " << mode << ". Next demo mode (1-x, 0 to quit):";
 
     bool valid_mode = false;
     while (!valid_mode)
