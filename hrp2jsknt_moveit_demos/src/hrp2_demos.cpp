@@ -399,7 +399,7 @@ public:
     }
 
     std::ofstream logging_file;
-    logging_file.open("/home/dave/ros/lightning_logging.csv");
+    logging_file.open("/home/dave/ompl_storage/lightning_logging.csv");
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
@@ -462,10 +462,11 @@ public:
         std::cout << std::endl;
         lightning->printLogs();
         lightning->saveDataLog(logging_file);
+        logging_file.flush();
       }
 
-      // Save database every 50 paths
-      if ((i+1) % 50 == 0 && (use_experience || true))
+      // Save database every 20 paths
+      if ((i+1) % 20 == 0 && (use_experience || true))
       {
         ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
         lightning->saveIfChanged();
@@ -540,7 +541,7 @@ public:
     req.planner_id = "RRTConnectkConfigDefault";
     req.group_name = planning_group_name_;
     req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
-    req.allowed_planning_time = 10; // second
+    req.allowed_planning_time = 60; // second
     req.use_experience = use_experience;
 
     // Call pipeline
