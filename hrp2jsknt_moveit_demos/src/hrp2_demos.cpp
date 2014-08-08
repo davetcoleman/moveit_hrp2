@@ -54,14 +54,13 @@
 #include <moveit/ompl_interface/parameterization/joint_space/joint_model_state_space.h>
 #include <moveit/ompl_interface/parameterization/joint_space/joint_model_state_space_factory.h>
 #include <ompl/tools/lightning/Lightning.h>
-#include <ompl_rviz_viewer/ompl_rviz_viewer.h>
+#include <ompl_visual_tools/ompl_visual_tools.h>
 
 // MoveIt msgs
 #include <moveit_msgs/PlanningScene.h>
 #include <moveit_msgs/PositionConstraint.h>
 
 // Constraint sampler
-//#include <hrp2jsknt_moveit_constraint_sampler/hrp2jsknt_constraint_sampler.h>
 #include <moveit/constraint_sampler_manager_loader/constraint_sampler_manager_loader.h>
 
 // Helper for Rviz
@@ -72,6 +71,10 @@
 
 // Stability checker
 #include <moveit_humanoid_stability/humanoid_stability.h>
+
+// ROS
+#include <control_msgs/FollowJointTrajectoryAction.h>
+#include <actionlib/client/simple_action_client.h>
 
 // Boost
 #include <boost/filesystem.hpp>
@@ -115,7 +118,7 @@ private:
   moveit_visual_tools::VisualToolsPtr visual_tools_;
 
   // The visual tools for interfacing with Rviz
-  ompl_rviz_viewer::OmplRvizViewerPtr ompl_viewer_;
+  ompl_visual_tools::OmplVisualToolsPtr ompl_viewer_;
 
   // Optional monitor to communicate with Rviz
   planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
@@ -521,9 +524,6 @@ public:
       visual_tools_->hideRobot();
     }
 
-    // Create plannign request
-    moveit_msgs::MotionPlanResponse response;
-
     // Create motion planning request
     planning_interface::MotionPlanRequest req;
     planning_interface::MotionPlanResponse res;
@@ -558,18 +558,36 @@ public:
         ROS_INFO_STREAM_NAMED("hrp2_demos","Attempting to visualize trajectory anyway...");
     }
 
-    if (verbose)
+    if (verbose || true)
     {
+      // Create planning request
+      moveit_msgs::MotionPlanResponse response;
       response.trajectory = moveit_msgs::RobotTrajectory();
       res.getMessage(response);
 
-      //std::cout << "Trajectory debug:\n " << response.trajectory << std::endl;
+      std::cout << "Trajectory debug:\n " << response.trajectory << std::endl;
+
+      // Optionally publish
+      if (true)
+      {
+        control_msgs::FollowJointTrajectoryGoal goal;
+        goal.trajectory = response.trajectory.joint_trajectory;
+
+        boost::shared_ptr<actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> > controller_action_client_;
+        controller_action_client_.reset(new actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
+                                        ("hrp2jsknt/follow_joint_trajectory_action", true));
+
+        ros::spinOnce();
+        ros::Duration(2).sleep();
+        ros::spinOnce();
+        controller_action_client_->sendGoal(goal);
+      }
 
       // Visualize the trajectory
       ROS_INFO("Visualizing the trajectory");
       //visual_tools_->hideRobot(); // hide the other robot so that we can see the trajectory TODO bug?
-
       visual_tools_->publishTrajectoryPath(response.trajectory, true);
+
     }
     else
     {
@@ -606,7 +624,7 @@ public:
     ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths to publish: " << paths.size());
 
     // Load the OMPL visualizer
-    ompl_viewer_.reset(new ompl_rviz_viewer::OmplRvizViewer(BASE_LINK, MARKER_TOPIC, robot_model_));
+    ompl_viewer_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
     ompl_viewer_->loadRobotStatePub("/hrp2_demos");
     ompl_viewer_->setStateSpace(model_state_space);
 

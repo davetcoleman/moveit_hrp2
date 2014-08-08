@@ -1,6 +1,8 @@
 <launch>
 
-  <include file="$(find hrp2jsknt_moveit_config)/launch/planning_context.launch" />
+  <include file="$(find hrp2jsknt_moveit_config)/launch/planning_context.launch">
+    <arg name="load_robot_description" value="true"/>
+  </include>
 
   <!-- GDB Debug Option -->
   <arg name="debug" default="false" />
@@ -47,7 +49,8 @@
 
     <!-- DTC Testing -->
     <!--param name="constraint_samplers" value=""/-->
-    <param name="constraint_samplers" value="hrp2jsknt_moveit_constraint_sampler/HRP2JSKNTConstraintSamplerAllocator"/>
+    <rosparam command="load" file="$(find moveit_humanoid_stability)/config/hrp2jsknt_stability.yaml"/>
+    <param name="constraint_samplers" value="moveit_humanoid_stability/HumanoidConstraintSamplerAllocator"/>
 
     <!-- MoveGroup capabilities to load -->
     <param name="capabilities" value="move_group/MoveGroupCartesianPathService

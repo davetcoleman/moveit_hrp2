@@ -4,7 +4,7 @@ project(hrp2jsknt_moveit_demos)
 find_package(catkin REQUIRED COMPONENTS
   moveit_humanoid_stability
   moveit_core
-  ompl_rviz_viewer
+  ompl_visual_tools
   moveit_planners_ompl
   random_numbers
   moveit_core 
@@ -21,7 +21,7 @@ catkin_package(
   CATKIN_DEPENDS
     moveit_humanoid_stability
     moveit_core
-    ompl_rviz_viewer
+    ompl_visual_tools
     moveit_planners_ompl
     random_numbers
     moveit_core
