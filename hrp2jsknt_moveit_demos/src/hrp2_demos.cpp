@@ -118,7 +118,7 @@ private:
   moveit_visual_tools::VisualToolsPtr visual_tools_;
 
   // The visual tools for interfacing with Rviz
-  ompl_visual_tools::OmplVisualToolsPtr ompl_viewer_;
+  ompl_visual_tools::OmplVisualToolsPtr ompl_visual_tools_;
 
   // Optional monitor to communicate with Rviz
   planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor_;
@@ -624,9 +624,9 @@ public:
     ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths to publish: " << paths.size());
 
     // Load the OMPL visualizer
-    ompl_viewer_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
-    ompl_viewer_->loadRobotStatePub("/hrp2_demos");
-    ompl_viewer_->setStateSpace(model_state_space);
+    ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
+    ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
+    ompl_visual_tools_->setStateSpace(model_state_space);
 
     // Get tip links for this setup
     std::vector<const robot_model::LinkModel*> tips;
@@ -640,7 +640,7 @@ public:
     for (std::size_t path_id = 0; path_id < std::min(int(paths.size()), problems); ++path_id)
     {
       std::cout << "Processing path " << path_id << std::endl;
-      ompl_viewer_->publishRobotPath(paths[path_id], joint_model_group_, tips, show_trajectory_animated);
+      ompl_visual_tools_->publishRobotPath(paths[path_id], joint_model_group_, tips, show_trajectory_animated);
     }
 
   } // function
