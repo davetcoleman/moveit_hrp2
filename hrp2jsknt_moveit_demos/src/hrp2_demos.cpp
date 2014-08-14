@@ -187,6 +187,8 @@ public:
       humanoid_stability_.reset(new moveit_humanoid_stability::HumanoidStability(verbose, *robot_state_, visual_tools_));
   }
 
+  // Whole body planning with MoveIt!
+  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
   void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions)
   {
     // Load planning scene monitor so that we can publish a collision enviornment to rviz
@@ -201,8 +203,11 @@ public:
     else
     {
       ros::Duration(0.25).sleep();
-      visual_tools_->removeAllCollisionObjects(planning_scene_monitor_); // clear all old collision objects that might be visible in rviz
+      visual_tools_->removeAllCollisionObjectsPS(); // clear all old collision objects that might be visible in rviz
     }
+
+    // Always prevent feet from going into floor
+    visual_tools_->publishCollisionFloor(0, "Floor");
 
     std::ofstream logging_file;
     logging_file.open("/home/dave/ompl_storage/lightning_logging.csv");
@@ -291,8 +296,6 @@ public:
 
   }
 
-  // Whole body planning with MoveIt!
-  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
   void genRandWholeBodyPlans(bool verbose, bool use_experience, bool use_collisions, planning_interface::PlanningContextPtr &planning_context_handle)
   {
     // Use constraint sampler to find valid random state
@@ -323,12 +326,14 @@ public:
     // Visualize
     if (verbose || true)
     {
-      visual_tools_->publishRobotState(robot_state_);
-      std::cout << "Visualizing robot state " << std::endl;
-      ros::Duration(4).sleep();
-
       visual_tools_->publishRobotState(goal_state_);
       std::cout << "Visualizing goal state " << std::endl;
+      ros::Duration(4).sleep();
+      if (!ros::ok())
+        exit(0);
+
+      visual_tools_->publishRobotState(robot_state_);
+      std::cout << "Visualizing robot state " << std::endl;
       ros::Duration(4).sleep();
 
       visual_tools_->hideRobot();
@@ -769,6 +774,8 @@ public:
     ros::Duration(0.1).sleep();
     ros::spinOnce();
 
+    visual_tools_->setPlanningSceneMonitor(planning_scene_monitor_);
+
     return true;
   }
 
@@ -776,7 +783,7 @@ public:
   {
     //static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2.scene";
     static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2-without-floor.scene";
-    visual_tools_->publishCollisionSceneFromFile(path, planning_scene_monitor_);
+    visual_tools_->loadCollisionSceneFromFile(path);
   }
 
   void fixRobotStateFoot(robot_state::RobotStatePtr &robot_state, double x, double y)

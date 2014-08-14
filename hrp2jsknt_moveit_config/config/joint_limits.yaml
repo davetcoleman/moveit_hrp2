@@ -1,128 +1,104 @@
 joint_limits:
+  velocity_scaling_factor: 0.1
   virtual_joint:
     trans_x:
       has_velocity_limits: true
-      max_velocity: 0.1
       has_acceleration_limits: false
       max_acceleration: 1
     trans_y:
       has_velocity_limits: true
-      max_velocity: 0.1
       has_acceleration_limits: false
       max_acceleration: 1
     trans_z:
       has_velocity_limits: true
-      max_velocity: 0.1
       has_acceleration_limits: false
       max_acceleration: 1
     rot_x:
       has_velocity_limits: true
-      max_velocity: 0.1
       has_acceleration_limits: false
       max_acceleration: 1
     rot_y:
       has_velocity_limits: true
-      max_velocity: 0.1
       has_acceleration_limits: false
       max_acceleration: 1
     rot_z:
       has_velocity_limits: true
-      max_velocity: 0.1
       has_acceleration_limits: false
       max_acceleration: 1
     rot_w:
       has_velocity_limits: true
-      max_velocity: 0.1
       has_acceleration_limits: false
       max_acceleration: 1
   CHEST_JOINT0:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   CHEST_JOINT1:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   HEAD_JOINT0:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   HEAD_JOINT1:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LARM_JOINT0:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LARM_JOINT1:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LARM_JOINT2:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LARM_JOINT3:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LARM_JOINT4:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LARM_JOINT5:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LARM_JOINT6:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LLEG_JOINT0:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LLEG_JOINT1:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LLEG_JOINT2:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LLEG_JOINT3:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LLEG_JOINT4:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LLEG_JOINT5:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   LLEG_JOINT6:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   L_INDEXMP_P:
@@ -157,101 +133,57 @@ joint_limits:
     max_acceleration: 0
   RARM_JOINT0:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RARM_JOINT1:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RARM_JOINT2:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RARM_JOINT3:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RARM_JOINT4:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RARM_JOINT5:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RARM_JOINT6:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RLEG_JOINT0:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RLEG_JOINT1:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RLEG_JOINT2:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RLEG_JOINT3:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RLEG_JOINT4:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RLEG_JOINT5:
     has_velocity_limits: true
-    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
   RLEG_JOINT6:
     has_velocity_limits: true
-    max_velocity: 0.1
-    has_acceleration_limits: false
-    max_acceleration: 0
-  R_INDEXMP_P:
-    has_velocity_limits: true
-    max_velocity: 0.5
-    has_acceleration_limits: false
-    max_acceleration: 0
-  R_INDEXMP_R:
-    has_velocity_limits: true
-    max_velocity: 0.5
-    has_acceleration_limits: false
-    max_acceleration: 0
-  R_INDEXPIP_R:
-    has_velocity_limits: true
-    max_velocity: 0.5
-    has_acceleration_limits: false
-    max_acceleration: 0
-  R_MIDDLEPIP_R:
-    has_velocity_limits: true
-    max_velocity: 0.5
-    has_acceleration_limits: false
-    max_acceleration: 0
-  R_THUMBCM_P:
-    has_velocity_limits: true
-    max_velocity: 0.5
-    has_acceleration_limits: false
-    max_acceleration: 0
-  R_THUMBCM_Y:
-    has_velocity_limits: true
-    max_velocity: 0.5
     has_acceleration_limits: false
     max_acceleration: 0

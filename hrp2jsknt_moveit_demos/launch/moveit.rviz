@@ -183,36 +183,6 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
-          L_INDEXMP_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_INDEXMP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_INDEXPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_MIDDLEPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_THUMBCM_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_THUMBCM_Y_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
           Link Tree Style: Links in Alphabetic Order
           RARM_EEF_CHILD:
             Alpha: 1
@@ -297,36 +267,6 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
-          R_INDEXMP_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_INDEXMP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_INDEXPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_MIDDLEPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_THUMBCM_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_THUMBCM_Y_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
           xtion_depth_frame:
             Alpha: 1
             Show Axes: false
@@ -368,7 +308,7 @@ Visualization Manager:
         Interactive Marker Size: 0.3
         Joint Violation Color: 255; 0; 255
         Planning Group: left_arm_torso
-        Query Goal State: true
+        Query Goal State: false
         Query Start State: false
         Show Workspace: false
         Start State Alpha: 1
@@ -497,36 +437,6 @@ Visualization Manager:
             Show Axes: false
             Show Trail: false
             Value: true
-          L_INDEXMP_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_INDEXMP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_INDEXPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_MIDDLEPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_THUMBCM_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          L_THUMBCM_Y_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
           Link Tree Style: Links in Alphabetic Order
           RARM_EEF_CHILD:
             Alpha: 1
@@ -607,36 +517,6 @@ Visualization Manager:
             Show Trail: false
             Value: true
           RLEG_LINK6:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_INDEXMP_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_INDEXMP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_INDEXPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_MIDDLEPIP_R_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_THUMBCM_P_LINK:
-            Alpha: 1
-            Show Axes: false
-            Show Trail: false
-            Value: true
-          R_THUMBCM_Y_LINK:
             Alpha: 1
             Show Axes: false
             Show Trail: false
@@ -789,36 +669,6 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        L_INDEXMP_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_INDEXMP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_INDEXPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_MIDDLEPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_THUMBCM_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_THUMBCM_Y_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         Link Tree Style: Links in Alphabetic Order
         RARM_EEF_CHILD:
           Alpha: 1
@@ -899,36 +749,6 @@ Visualization Manager:
           Show Trail: false
           Value: true
         RLEG_LINK6:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_INDEXMP_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_INDEXMP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_INDEXPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_MIDDLEPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_THUMBCM_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_THUMBCM_Y_LINK:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -1078,36 +898,6 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        L_INDEXMP_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_INDEXMP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_INDEXPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_MIDDLEPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_THUMBCM_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_THUMBCM_Y_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         Link Tree Style: Links in Alphabetic Order
         RARM_EEF_CHILD:
           Alpha: 1
@@ -1188,36 +978,6 @@ Visualization Manager:
           Show Trail: false
           Value: true
         RLEG_LINK6:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_INDEXMP_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_INDEXMP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_INDEXPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_MIDDLEPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_THUMBCM_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_THUMBCM_Y_LINK:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -1367,36 +1127,6 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        L_INDEXMP_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_INDEXMP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_INDEXPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_MIDDLEPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_THUMBCM_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        L_THUMBCM_Y_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         Link Tree Style: Links in Alphabetic Order
         RARM_EEF_CHILD:
           Alpha: 1
@@ -1481,36 +1211,6 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        R_INDEXMP_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_INDEXMP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_INDEXPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_MIDDLEPIP_R_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_THUMBCM_P_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        R_THUMBCM_Y_LINK:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
         xtion_depth_frame:
           Alpha: 1
           Show Axes: false
@@ -1552,7 +1252,7 @@ Visualization Manager:
       Marker Topic: /hrp2_visual_markers
       Name: HRP2 Demos Marker
       Namespaces:
-        {}
+        Rectangle: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -1592,22 +1292,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 4.08676
+      Distance: 9.79508
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.847505
-        Y: 0.251614
-        Z: 0
+        X: 0.786766
+        Y: 0.788741
+        Z: 2.38419e-07
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.170399
+      Pitch: 0.100399
       Target Frame: BODY
       Value: XYOrbit (rviz)
-      Yaw: 0.125403
+      Yaw: 5.67859
     Saved: ~
 Window Geometry:
   Displays:
