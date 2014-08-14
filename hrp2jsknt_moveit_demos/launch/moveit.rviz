@@ -5,12 +5,14 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /MotionPlanning1
+        - /MotionPlanning1/Scene Geometry1
+        - /MotionPlanning1/Planning Request1
         - /MotionPlanning1/Planned Path1
         - /StateSampler State1
         - /HRP2 Demos Marker1/Namespaces1
         - /TF1/Tree1
       Splitter Ratio: 0.507622
-    Tree Height: 1222
+    Tree Height: 833
   - Class: rviz/Help
     Name: Help
   - Class: rviz/Views
@@ -61,10 +63,10 @@ Visualization Manager:
       Enabled: true
       Move Group Namespace: ""
       MoveIt_Goal_Tolerance: 0
-      MoveIt_Planning_Attempts: 10
-      MoveIt_Planning_Time: 5
+      MoveIt_Planning_Attempts: 2
+      MoveIt_Planning_Time: 2
       MoveIt_Use_Constraint_Aware_IK: false
-      MoveIt_Warehouse_Host: 127.0.0.1
+      MoveIt_Warehouse_Host: 127.0.0.2
       MoveIt_Warehouse_Port: 33829
       Name: MotionPlanning
       Planned Path:
@@ -345,12 +347,12 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-        Loop Animation: false
+        Loop Animation: true
         Robot Alpha: 0.5
         Show Robot Collision: false
         Show Robot Visual: true
         Show Trail: false
-        State Display Time: 0.1 s
+        State Display Time: 0.5 s
         Trajectory Topic: /move_group/display_planned_path
       Planning Metrics:
         Payload: 1
@@ -365,8 +367,8 @@ Visualization Manager:
         Goal State Color: 250; 128; 0
         Interactive Marker Size: 0.3
         Joint Violation Color: 255; 0; 255
-        Planning Group: whole_body_fixed
-        Query Goal State: false
+        Planning Group: left_arm_torso
+        Query Goal State: true
         Query Start State: false
         Show Workspace: false
         Start State Alpha: 1
@@ -377,7 +379,7 @@ Visualization Manager:
         Scene Alpha: 0.9
         Scene Color: 50; 230; 50
         Scene Display Time: 0.2
-        Show Scene Geometry: true
+        Show Scene Geometry: false
         Voxel Coloring: Z-Axis
         Voxel Rendering: Occupied Voxels
       Scene Robot:
@@ -1550,9 +1552,7 @@ Visualization Manager:
       Marker Topic: /hrp2_visual_markers
       Name: HRP2 Demos Marker
       Namespaces:
-        Arrow: true
-        Path: true
-        Spheres: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -1560,8 +1560,7 @@ Visualization Manager:
       Marker Topic: /hrp2jsknt_moveit_demos/display_contacts
       Name: MoveIt Contact Points
       Namespaces:
-        LARM_LINK4=LARM_LINK6: true
-        RARM_LINK4=RARM_LINK6: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/TF
@@ -1593,22 +1592,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 4.49663
+      Distance: 4.08676
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.31086
-        Y: 2.20989
-        Z: -1.2517e-06
+        X: 0.847505
+        Y: 0.251614
+        Z: 0
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.329798
+      Pitch: 0.170399
       Target Frame: BODY
       Value: XYOrbit (rviz)
-      Yaw: 5.84172
+      Yaw: 0.125403
     Saved: ~
 Window Geometry:
   Displays:
@@ -1620,9 +1619,9 @@ Window Geometry:
   Hide Right Dock: false
   Motion Planning:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000001b500000595fc0200000005fb000000100044006900730070006c006100790073010000004100000595000000dd00fffffffb0000000800480065006c00700000000342000000bb0000007600fffffffb0000000a0056006900650077007300000003b0000000b0000000b000fffffffb0000000c00430061006d00650072006100000002ff000001610000000000000000fb0000001e004d006f00740069006f006e00200050006c0061006e006e0069006e006700000005c0000000160000017400ffffff000003450000059500000001000000020000000100000002fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000002b100000595fc0200000005fb000000100044006900730070006c006100790073010000004100000410000000dd00fffffffb0000000800480065006c00700000000342000000bb0000007600fffffffb0000000a0056006900650077007300000003b0000000b0000000b000fffffffb0000000c00430061006d00650072006100000002ff000001610000000000000000fb0000001e004d006f00740069006f006e00200050006c0061006e006e0069006e006701000004570000017f0000017400ffffff000002490000059500000001000000020000000100000002fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1280
-  X: -3
+  X: -7
   Y: 24

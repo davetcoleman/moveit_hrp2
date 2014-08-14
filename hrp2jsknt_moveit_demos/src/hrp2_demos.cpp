@@ -180,6 +180,287 @@ public:
     }
   }
 
+  void loadHumanoidStabilityChecker(bool verbose)
+  {
+    // Configure stability checker
+    if (!humanoid_stability_)
+      humanoid_stability_.reset(new moveit_humanoid_stability::HumanoidStability(verbose, *robot_state_, visual_tools_));
+  }
+
+  void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions)
+  {
+    // Load planning scene monitor so that we can publish a collision enviornment to rviz
+    if (!loadPlanningSceneMonitor())
+      return;
+
+    // Show the lab as collision objects
+    if (use_collisions)
+    {
+      jskLabCollisionEnvironment();
+    }
+    else
+    {
+      ros::Duration(0.25).sleep();
+      visual_tools_->removeAllCollisionObjects(planning_scene_monitor_); // clear all old collision objects that might be visible in rviz
+    }
+
+    std::ofstream logging_file;
+    logging_file.open("/home/dave/ompl_storage/lightning_logging.csv");
+
+    // Move robot to specific place on plane
+    //fixRobotStateFoot(robot_state_, 1.0, 0.5);
+    //fixRobotStateFoot(goal_state_, 1.0, 0.5);
+
+    // Create a constraint sampler for random poses
+    //loadConstraintSampler(verbose);
+    loadConstraintSampler(false);
+
+    // Set custom validity checker for balance constraints
+    loadHumanoidStabilityChecker(verbose);
+    bool verbose_feasibility = true;
+    planning_scene_->setStateFeasibilityPredicate(humanoid_stability_->getStateFeasibilityFn());
+
+    // Load planning
+    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Loading planning pipeline");
+    loadPlanningPipeline(); // always call before using generatePlan()
+
+    // Remember the planning context even after solving is done
+    planning_interface::PlanningContextPtr planning_context_handle;
+    // Remember all planning context handles so we can save to file in the end
+    std::set<planning_interface::PlanningContextPtr> planning_context_handles;
+
+    ompl::tools::LightningPtr lightning;
+
+    // Loop through planning
+    for (std::size_t i = 0; i < problems; ++i)
+    {
+      if (!ros::ok())
+        break;
+
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << "NEW PLAN STARTING (" << i+1 << " of " << problems << ")----------------------------------------------------- " << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << std::endl;
+
+      genRandWholeBodyPlans(verbose, use_experience, use_collisions, planning_context_handle);
+
+      // Save all contexts to a set
+      planning_context_handles.insert(planning_context_handle);
+      if (planning_context_handles.size() > 1)
+      {
+        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unexpected: more than 1 planning context now exists");
+        exit(-1);
+      }
+
+      // Load ptrs on first pass
+      if (i == 0 && (use_experience || true))
+      {
+        ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
+        lightning = boost::dynamic_pointer_cast<ompl::tools::Lightning>(mbpc->getOMPLSimpleSetup());
+      }
+
+      // Debugging
+      if (use_experience || true)
+      {
+        std::cout << std::endl;
+        lightning->printLogs();
+        lightning->saveDataLog(logging_file);
+        logging_file.flush();
+      }
+
+      // Save database every 20 paths
+      if ((i+1) % 20 == 0 && (use_experience || true))
+      {
+        ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
+        lightning->saveIfChanged();
+      }
+
+    }
+
+    logging_file.close();
+
+    // Save the solutions to file before shutting down
+    if (use_experience || true)
+    {
+      ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
+      lightning->saveIfChanged();
+    }
+
+  }
+
+  // Whole body planning with MoveIt!
+  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
+  void genRandWholeBodyPlans(bool verbose, bool use_experience, bool use_collisions, planning_interface::PlanningContextPtr &planning_context_handle)
+  {
+    // Use constraint sampler to find valid random state
+    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random start and goal states");
+    int attempts = 10000;
+
+    /*
+    if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
+    {
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
+      return;
+    }
+    */
+    static const std::string state_name = "one_foot_start";    
+    std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
+    setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
+
+    if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
+    {
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
+      return;
+    }
+
+    // Updase virtual joint transform to fake base
+    robot_state_->updateStateWithFakeBase();
+    goal_state_->updateStateWithFakeBase();
+
+    // Visualize
+    if (verbose || true)
+    {
+      visual_tools_->publishRobotState(robot_state_);
+      std::cout << "Visualizing robot state " << std::endl;
+      ros::Duration(4).sleep();
+
+      visual_tools_->publishRobotState(goal_state_);
+      std::cout << "Visualizing goal state " << std::endl;
+      ros::Duration(4).sleep();
+
+      visual_tools_->hideRobot();
+    }
+
+
+    // Test start state
+    if( !humanoid_stability_->isValid(*robot_state_, true) )
+      ROS_ERROR_STREAM_NAMED("temp","Not valid!!");
+
+
+    // Create motion planning request
+    planning_interface::MotionPlanRequest req;
+    planning_interface::MotionPlanResponse res;
+
+    // Start state
+    moveit::core::robotStateToRobotStateMsg(*robot_state_, req.start_state);
+
+    // Goal constraint
+    double tolerance_pose = 0.0001;
+    moveit_msgs::Constraints goal_constraint = kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_,
+                                                                                               tolerance_pose, tolerance_pose);
+    req.goal_constraints.push_back(goal_constraint);
+
+    // Other settings
+    req.planner_id = "RRTConnectkConfigDefault";
+    req.group_name = planning_group_name_;
+    req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
+    req.allowed_planning_time = 60; // second
+    req.use_experience = use_experience;
+
+    // Call pipeline
+    std::vector<std::size_t> dummy;
+
+    // SOLVE
+    planning_pipeline_->generatePlan(planning_scene_, req, res, dummy, planning_context_handle);
+
+    // Check that the planning was successful
+    if(res.error_code_.val != res.error_code_.SUCCESS)
+    {
+      ROS_ERROR("Could not compute plan successfully =======================================================");
+      if (verbose)
+        ROS_INFO_STREAM_NAMED("hrp2_demos","Attempting to visualize trajectory anyway...");
+    }
+
+    if (verbose || true)
+    {
+      // Create planning request
+      moveit_msgs::MotionPlanResponse response;
+      response.trajectory = moveit_msgs::RobotTrajectory();
+      res.getMessage(response);
+
+      std::cout << "Trajectory debug:\n " << response.trajectory << std::endl;
+
+      // Optionally publish
+      if (true)
+      {
+        control_msgs::FollowJointTrajectoryGoal goal;
+        goal.trajectory = response.trajectory.joint_trajectory;
+
+        boost::shared_ptr<actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> > controller_action_client_;
+        controller_action_client_.reset(new actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
+                                        ("hrp2jsknt/follow_joint_trajectory_action", true));
+
+        ros::spinOnce();
+        ros::Duration(2).sleep();
+        ros::spinOnce();
+        controller_action_client_->sendGoal(goal);
+      }
+
+      // Visualize the trajectory
+      ROS_INFO("Visualizing the trajectory");
+      //visual_tools_->hideRobot(); // hide the other robot so that we can see the trajectory TODO bug?
+      visual_tools_->publishTrajectoryPath(response.trajectory, true);
+
+    }
+    else
+    {
+      ROS_INFO_STREAM_NAMED("hrp2_demos","Not visualizing because not in verbose mode");
+    }
+
+
+  }
+
+  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=2 group:=left_arm verbose:=1
+  void displayLightningPlans(int problems, bool verbose)
+  {
+    // All we care about is the trajectory robot
+    visual_tools_->hideRobot();
+
+    // Create a state space describing our robot's planning group
+    ompl_interface::ModelBasedStateSpaceSpecification model_ss_spec(robot_model_, joint_model_group_);
+    const ompl_interface::JointModelStateSpaceFactory factory;
+    ompl_interface::ModelBasedStateSpacePtr model_state_space = factory.getNewStateSpace(model_ss_spec);
+
+    // Setup the state space
+    model_state_space->setup();
+
+    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Model Based State Space has dimensions: " << model_state_space->getDimension());
+
+    // Load lightning and its database
+    ompl::tools::Lightning lightning(model_state_space);
+    lightning.load(joint_model_group_->getName());
+
+    // Get all of the paths in the database
+    std::vector<ompl::base::PlannerDataPtr> paths;
+    lightning.getAllPaths(paths);
+
+    ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths to publish: " << paths.size());
+
+    // Load the OMPL visualizer
+    ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
+    ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
+    ompl_visual_tools_->setStateSpace(model_state_space);
+
+    // Get tip links for this setup
+    std::vector<const robot_model::LinkModel*> tips;
+    joint_model_group_->getEndEffectorTips(tips);
+    std::cout << "Found " << tips.size() << " tips" << std::endl;
+
+    bool show_trajectory_animated = verbose;
+
+    // Loop through each path
+    problems = !problems ? std::numeric_limits<int>::max() : problems; // if 0, show all problems
+    for (std::size_t path_id = 0; path_id < std::min(int(paths.size()), problems); ++path_id)
+    {
+      std::cout << "Processing path " << path_id << std::endl;
+      ompl_visual_tools_->publishRobotPath(paths[path_id], joint_model_group_, tips, show_trajectory_animated);
+    }
+
+  } // function
+
   // Use two IK solvers to find leg positions
   void genRandLegConfigurations()
   {
@@ -376,274 +657,6 @@ public:
       visual_tools_->publishTrajectoryPath(response.trajectory);
     }
   }
-
-  void loadHumanoidStabilityChecker(bool verbose)
-  {
-    // Configure stability checker
-    if (!humanoid_stability_)
-      humanoid_stability_.reset(new moveit_humanoid_stability::HumanoidStability(verbose, *robot_state_, visual_tools_));
-  }
-
-  void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions)
-  {
-    // Load planning scene monitor so that we can publish a collision enviornment to rviz
-    if (!loadPlanningSceneMonitor())
-      return;
-
-    // Show the lab as collision objects
-    if (use_collisions)
-    {
-      jskLabCollisionEnvironment();
-    }
-    else
-    {
-      ros::Duration(0.25).sleep();
-      visual_tools_->removeAllCollisionObjects(planning_scene_monitor_); // clear all old collision objects that might be visible in rviz
-    }
-
-    std::ofstream logging_file;
-    logging_file.open("/home/dave/ompl_storage/lightning_logging.csv");
-
-    // Move robot to specific place on plane
-    //fixRobotStateFoot(robot_state_, 1.0, 0.5);
-    //fixRobotStateFoot(goal_state_, 1.0, 0.5);
-
-    // Create a constraint sampler for random poses
-    //loadConstraintSampler(verbose);
-    loadConstraintSampler(false);
-
-    // Set custom validity checker for balance constraints
-    loadHumanoidStabilityChecker(verbose);
-    bool verbose_feasibility = true;
-    planning_scene_->setStateFeasibilityPredicate(humanoid_stability_->getStateFeasibilityFn());
-
-    // Load planning
-    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Loading planning pipeline");
-    loadPlanningPipeline(); // always call before using generatePlan()
-
-    // Remember the planning context even after solving is done
-    planning_interface::PlanningContextPtr planning_context_handle;
-    // Remember all planning context handles so we can save to file in the end
-    std::set<planning_interface::PlanningContextPtr> planning_context_handles;
-
-    ompl::tools::LightningPtr lightning;
-
-    // Loop through planning
-    for (std::size_t i = 0; i < problems; ++i)
-    {
-      if (!ros::ok())
-        break;
-
-      std::cout << std::endl;
-      std::cout << std::endl;
-      std::cout << std::endl;
-      std::cout << "NEW PLAN STARTING (" << i+1 << " of " << problems << ")----------------------------------------------------- " << std::endl;
-      std::cout << std::endl;
-      std::cout << std::endl;
-      std::cout << std::endl;
-
-      genRandWholeBodyPlans(verbose, use_experience, use_collisions, planning_context_handle);
-
-      // Save all contexts to a set
-      planning_context_handles.insert(planning_context_handle);
-      if (planning_context_handles.size() > 1)
-      {
-        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unexpected: more than 1 planning context now exists");
-        exit(-1);
-      }
-
-      // Load ptrs on first pass
-      if (i == 0 && (use_experience || true))
-      {
-        ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
-        lightning = boost::dynamic_pointer_cast<ompl::tools::Lightning>(mbpc->getOMPLSimpleSetup());
-      }
-
-      // Debugging
-      if (use_experience || true)
-      {
-        std::cout << std::endl;
-        lightning->printLogs();
-        lightning->saveDataLog(logging_file);
-        logging_file.flush();
-      }
-
-      // Save database every 20 paths
-      if ((i+1) % 20 == 0 && (use_experience || true))
-      {
-        ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
-        lightning->saveIfChanged();
-      }
-
-    }
-
-    logging_file.close();
-
-    // Save the solutions to file before shutting down
-    if (use_experience || true)
-    {
-      ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
-      lightning->saveIfChanged();
-    }
-
-  }
-
-  // Whole body planning with MoveIt!
-  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 group:=whole_body verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
-  void genRandWholeBodyPlans(bool verbose, bool use_experience, bool use_collisions, planning_interface::PlanningContextPtr &planning_context_handle)
-  {
-    // Use constraint sampler to find valid random state
-    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random start and goal states");
-    int attempts = 10000;
-    if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
-    {
-      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
-      return;
-    }
-    if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
-    {
-      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
-      return;
-    }
-
-    // Updase virtual joint transform to fake base
-    robot_state_->updateStateWithFakeBase();
-    goal_state_->updateStateWithFakeBase();
-
-    // Visualize
-    if (verbose)
-    {
-      visual_tools_->publishRobotState(robot_state_);
-      std::cout << "Visualizing robot state " << std::endl;
-      ros::Duration(1).sleep();
-
-      visual_tools_->publishRobotState(goal_state_);
-      std::cout << "Visualizing goal state " << std::endl;
-      ros::Duration(1).sleep();
-
-      visual_tools_->hideRobot();
-    }
-
-    // Create motion planning request
-    planning_interface::MotionPlanRequest req;
-    planning_interface::MotionPlanResponse res;
-
-    // Start state
-    moveit::core::robotStateToRobotStateMsg(*robot_state_, req.start_state);
-
-    // Goal constraint
-    double tolerance_pose = 0.0001;
-    moveit_msgs::Constraints goal_constraint = kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_,
-                                                                                               tolerance_pose, tolerance_pose);
-    req.goal_constraints.push_back(goal_constraint);
-
-    // Other settings
-    req.planner_id = "RRTConnectkConfigDefault";
-    req.group_name = planning_group_name_;
-    req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
-    req.allowed_planning_time = 60; // second
-    req.use_experience = use_experience;
-
-    // Call pipeline
-    std::vector<std::size_t> dummy;
-
-    // SOLVE
-    planning_pipeline_->generatePlan(planning_scene_, req, res, dummy, planning_context_handle);
-
-    // Check that the planning was successful
-    if(res.error_code_.val != res.error_code_.SUCCESS)
-    {
-      ROS_ERROR("Could not compute plan successfully =======================================================");
-      if (verbose)
-        ROS_INFO_STREAM_NAMED("hrp2_demos","Attempting to visualize trajectory anyway...");
-    }
-
-    if (verbose || true)
-    {
-      // Create planning request
-      moveit_msgs::MotionPlanResponse response;
-      response.trajectory = moveit_msgs::RobotTrajectory();
-      res.getMessage(response);
-
-      std::cout << "Trajectory debug:\n " << response.trajectory << std::endl;
-
-      // Optionally publish
-      if (true)
-      {
-        control_msgs::FollowJointTrajectoryGoal goal;
-        goal.trajectory = response.trajectory.joint_trajectory;
-
-        boost::shared_ptr<actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> > controller_action_client_;
-        controller_action_client_.reset(new actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
-                                        ("hrp2jsknt/follow_joint_trajectory_action", true));
-
-        ros::spinOnce();
-        ros::Duration(2).sleep();
-        ros::spinOnce();
-        controller_action_client_->sendGoal(goal);
-      }
-
-      // Visualize the trajectory
-      ROS_INFO("Visualizing the trajectory");
-      //visual_tools_->hideRobot(); // hide the other robot so that we can see the trajectory TODO bug?
-      visual_tools_->publishTrajectoryPath(response.trajectory, true);
-
-    }
-    else
-    {
-      ROS_INFO_STREAM_NAMED("hrp2_demos","Not visualizing because not in verbose mode");
-    }
-
-
-  }
-
-  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=2 group:=left_arm verbose:=1
-  void displayLightningPlans(int problems, bool verbose)
-  {
-    // All we care about is the trajectory robot
-    visual_tools_->hideRobot();
-
-    // Create a state space describing our robot's planning group
-    ompl_interface::ModelBasedStateSpaceSpecification model_ss_spec(robot_model_, joint_model_group_);
-    const ompl_interface::JointModelStateSpaceFactory factory;
-    ompl_interface::ModelBasedStateSpacePtr model_state_space = factory.getNewStateSpace(model_ss_spec);
-
-    // Setup the state space
-    model_state_space->setup();
-
-    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Model Based State Space has dimensions: " << model_state_space->getDimension());
-
-    // Load lightning and its database
-    ompl::tools::Lightning lightning(model_state_space);
-    lightning.load(joint_model_group_->getName());
-
-    // Get all of the paths in the database
-    std::vector<ompl::base::PlannerDataPtr> paths;
-    lightning.getAllPaths(paths);
-
-    ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths to publish: " << paths.size());
-
-    // Load the OMPL visualizer
-    ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
-    ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
-    ompl_visual_tools_->setStateSpace(model_state_space);
-
-    // Get tip links for this setup
-    std::vector<const robot_model::LinkModel*> tips;
-    joint_model_group_->getEndEffectorTips(tips);
-    std::cout << "Found " << tips.size() << " tips" << std::endl;
-
-    bool show_trajectory_animated = verbose;
-
-    // Loop through each path
-    problems = !problems ? std::numeric_limits<int>::max() : problems; // if 0, show all problems
-    for (std::size_t path_id = 0; path_id < std::min(int(paths.size()), problems); ++path_id)
-    {
-      std::cout << "Processing path " << path_id << std::endl;
-      ompl_visual_tools_->publishRobotPath(paths[path_id], joint_model_group_, tips, show_trajectory_animated);
-    }
-
-  } // function
 
   bool setRandomValidState(robot_state::RobotStatePtr &state, const robot_model::JointModelGroup* jmg)
   {
