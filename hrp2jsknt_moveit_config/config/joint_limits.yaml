@@ -3,7 +3,7 @@
 # Joint limits can be turned off with [has_velocity_limits, has_acceleration_limits]
 # Finally, as a final step velocity limits can be scaled using a global value [velocity_scaling_factor]
 joint_limits:
-  velocity_scaling_factor: 0.1
+  velocity_scaling_factor: 0.05
   virtual_joint:
     trans_x:
       has_velocity_limits: true

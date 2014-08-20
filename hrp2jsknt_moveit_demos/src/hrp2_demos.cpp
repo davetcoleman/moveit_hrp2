@@ -218,7 +218,7 @@ public:
 
     // Create a constraint sampler for random poses
     //loadConstraintSampler(verbose);
-    loadConstraintSampler(false);
+    loadConstraintSampler(verbose);
 
     // Set custom validity checker for balance constraints
     loadHumanoidStabilityChecker(verbose);
@@ -309,29 +309,41 @@ public:
       return;
     }
     */
-    static const std::string state_name = "one_foot_start";    
+    static const std::string state_name = "one_foot_transition"; //one_foot_start";    
     std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
     setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
 
-    if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
+    ROS_INFO_STREAM_NAMED("temp","Starting to look for goal state...");
+    while(true)
     {
-      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
-      return;
+      if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
+      {
+        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
+        return;
+      }
+      // Updase virtual joint transform to fake base
+      goal_state_->updateStateWithFakeBase();
+
+      visual_tools_->publishRobotState(goal_state_);
+      std::cout << "Visualizing goal state " << std::endl;
+      std::cout << "Is this a good goal state? " << std::endl;
+      char c = std::cin.get();
+      int mode = c - '0';
+      std::cout << "key: " << c << " mode: " << mode << std::endl;
+      // eat enter key character
+      c = std::cin.get();      
+
+      if (mode == 1)
+        break;
     }
+    std::cout << "Keeping goal state " << std::endl;
 
     // Updase virtual joint transform to fake base
     robot_state_->updateStateWithFakeBase();
-    goal_state_->updateStateWithFakeBase();
 
     // Visualize
     if (verbose || true)
     {
-      visual_tools_->publishRobotState(goal_state_);
-      std::cout << "Visualizing goal state " << std::endl;
-      ros::Duration(4).sleep();
-      if (!ros::ok())
-        exit(0);
-
       visual_tools_->publishRobotState(robot_state_);
       std::cout << "Visualizing robot state " << std::endl;
       ros::Duration(4).sleep();
@@ -339,9 +351,26 @@ public:
       visual_tools_->hideRobot();
     }
 
+    // Plan to pose
+    genRandWholeBodyPlan(verbose, use_experience, planning_context_handle, robot_state_, goal_state_);
 
+    // Plan back to start
+    std::cout << "Continue planning back to start?" << std::endl;
+    char c = std::cin.get();
+    int mode = c - '0';
+    std::cout << "key: " << c << " mode: " << mode << std::endl;
+    // eat enter key character
+    c = std::cin.get();      
+
+    if (mode == 1)
+      genRandWholeBodyPlan(verbose, use_experience, planning_context_handle, goal_state_, robot_state_);
+  }
+
+  void genRandWholeBodyPlan(bool verbose, bool use_experience, planning_interface::PlanningContextPtr &planning_context_handle,
+                            robot_state::RobotStatePtr start_state, robot_state::RobotStatePtr goal_state)
+  {
     // Test start state
-    if( !humanoid_stability_->isValid(*robot_state_, true) )
+    if( !humanoid_stability_->isValid(*start_state, true) )
       ROS_ERROR_STREAM_NAMED("temp","Not valid!!");
 
 
@@ -350,11 +379,11 @@ public:
     planning_interface::MotionPlanResponse res;
 
     // Start state
-    moveit::core::robotStateToRobotStateMsg(*robot_state_, req.start_state);
+    moveit::core::robotStateToRobotStateMsg(*start_state, req.start_state);
 
     // Goal constraint
     double tolerance_pose = 0.0001;
-    moveit_msgs::Constraints goal_constraint = kinematic_constraints::constructGoalConstraints(*goal_state_, joint_model_group_,
+    moveit_msgs::Constraints goal_constraint = kinematic_constraints::constructGoalConstraints(*goal_state, joint_model_group_,
                                                                                                tolerance_pose, tolerance_pose);
     req.goal_constraints.push_back(goal_constraint);
 
@@ -362,7 +391,7 @@ public:
     req.planner_id = "RRTConnectkConfigDefault";
     req.group_name = planning_group_name_;
     req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
-    req.allowed_planning_time = 60; // second
+    req.allowed_planning_time = 60*10; // second
     req.use_experience = use_experience;
 
     // Call pipeline
@@ -659,7 +688,7 @@ public:
       ROS_INFO("Visualizing the trajectory");
       //ROS_DEBUG_STREAM_NAMED("hrp2_demos","recieved trajectory: " << response.trajectory);
 
-      visual_tools_->publishTrajectoryPath(response.trajectory);
+      visual_tools_->publishTrajectoryPath(response.trajectory, false);
     }
   }
 
@@ -860,7 +889,7 @@ public:
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
-    fixRobotStateFoot(robot_state_, 1.5, 2.0);
+    //fixRobotStateFoot(robot_state_, 1.5, 2.0);
     //fixRobotStateFoot(robot_state_, 0.0, 0.0);
 
     // Load planning scene monitor so that we can publish a collision enviornment to rviz
