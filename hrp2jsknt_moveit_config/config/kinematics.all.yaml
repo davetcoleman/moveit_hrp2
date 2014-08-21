@@ -18,6 +18,7 @@ whole_body_fixed:
   kinematics_solver_ee_rot_vel_limit: 1 # essentially turned off
   kinematics_solver_joint_velocity_max_ratio: 0.1  #0.5 #0.25
 
+
 left_leg:
   kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
   kinematics_solver_search_resolution: 0.005
