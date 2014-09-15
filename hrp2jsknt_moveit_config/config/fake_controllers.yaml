@@ -100,14 +100,12 @@ controller_list:
       - LLEG_JOINT3
       - LLEG_JOINT4
       - LLEG_JOINT5
-      - LLEG_JOINT6
       - RLEG_JOINT0
       - RLEG_JOINT1
       - RLEG_JOINT2
       - RLEG_JOINT3
       - RLEG_JOINT4
       - RLEG_JOINT5
-      - RLEG_JOINT6
   - name: fake_left_hand_controller
     joints:
       - L_INDEXMP_R
@@ -168,3 +166,75 @@ controller_list:
     joints:
       - CHEST_JOINT0
       - CHEST_JOINT1
+  - name: fake_robot_joints_controller
+    joints:
+      - CHEST_JOINT0
+      - CHEST_JOINT1
+      - HEAD_JOINT0
+      - HEAD_JOINT1
+      - LARM_JOINT0
+      - LARM_JOINT1
+      - LARM_JOINT2
+      - LARM_JOINT3
+      - LARM_JOINT4
+      - LARM_JOINT5
+      - LARM_JOINT6
+      - LARM_JOINT7
+      - L_INDEXMP_R
+      - L_INDEXMP_P
+      - L_INDEXPIP_R
+      - L_MIDDLEPIP_R
+      - L_THUMBCM_Y
+      - L_THUMBCM_P
+      - RARM_JOINT0
+      - RARM_JOINT1
+      - RARM_JOINT2
+      - RARM_JOINT3
+      - RARM_JOINT4
+      - RARM_JOINT5
+      - RARM_JOINT6
+      - RARM_JOINT7
+      - R_INDEXMP_R
+      - R_INDEXMP_P
+      - R_INDEXPIP_R
+      - R_MIDDLEPIP_R
+      - R_THUMBCM_Y
+      - R_THUMBCM_P
+      - LLEG_JOINT0
+      - LLEG_JOINT1
+      - LLEG_JOINT2
+      - LLEG_JOINT3
+      - LLEG_JOINT4
+      - LLEG_JOINT5
+      - LLEG_JOINT6
+      - RLEG_JOINT0
+      - RLEG_JOINT1
+      - RLEG_JOINT2
+      - RLEG_JOINT3
+      - RLEG_JOINT4
+      - RLEG_JOINT5
+      - RLEG_JOINT6
+  - name: fake_whole_body_minus_left_leg_controller
+    joints:
+      - CHEST_JOINT0
+      - CHEST_JOINT1
+      - LARM_JOINT0
+      - LARM_JOINT1
+      - LARM_JOINT2
+      - LARM_JOINT3
+      - LARM_JOINT4
+      - LARM_JOINT5
+      - LARM_JOINT6
+      - RARM_JOINT0
+      - RARM_JOINT1
+      - RARM_JOINT2
+      - RARM_JOINT3
+      - RARM_JOINT4
+      - RARM_JOINT5
+      - RARM_JOINT6
+      - RLEG_JOINT0
+      - RLEG_JOINT1
+      - RLEG_JOINT2
+      - RLEG_JOINT3
+      - RLEG_JOINT4
+      - RLEG_JOINT5
