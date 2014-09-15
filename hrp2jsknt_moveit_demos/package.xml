@@ -25,6 +25,8 @@
   <build_depend>moveit_msgs</build_depend>
   <build_depend>moveit_visual_tools</build_depend>
   <build_depend>random_numbers</build_depend>
+  <build_depend>eigen</build_depend>
+  <build_depend>cmake_modules</build_depend>
 
   <run_depend>moveit_humanoid_stability</run_depend>
   <run_depend>ompl_visual_tools</run_depend>

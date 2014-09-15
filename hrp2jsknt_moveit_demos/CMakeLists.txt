@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_ros_planning 
   pluginlib
   moveit_visual_tools
+  cmake_modules
 )
 
 find_package(Eigen REQUIRED)
@@ -28,12 +29,16 @@ catkin_package(
     moveit_ros_planning
     interactive_markers
     moveit_visual_tools
+  DEPENDS
+    Eigen
 )
 
 ###########
 ## Build ##
 ###########
-include_directories(SYSTEM ${Boost_INCLUDE_DIR} ${EIGEN_INCLUDE_DIRS})
+include_directories(SYSTEM 
+  ${Boost_INCLUDE_DIR} 
+  ${EIGEN_INCLUDE_DIRS})
 include_directories(${catkin_INCLUDE_DIRS})
 link_directories(${catkin_LIBRARY_DIRS})
 
