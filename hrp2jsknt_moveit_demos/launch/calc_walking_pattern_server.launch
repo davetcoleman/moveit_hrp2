@@ -1,7 +1,0 @@
-<launch>
-
-  <node pkg="roseus" type="roseus" name="calc_walk_pattern_server" output="screen"
-	args="$(find hrp2jsknt_moveit_demos)/euslisp/calc-walk-pattern-server.l">
-  </node>
-
-</launch>

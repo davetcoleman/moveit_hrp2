@@ -18,7 +18,7 @@
   <arg name="verbose" default="0" />
   <arg name="group" default="whole_body" />
   <arg name="use_experience" default="1" />
-  <arg name="use_collisions" default="1" />
+  <arg name="use_collisions" default="0" />
 
 
   <!-- Planning Functionality -->

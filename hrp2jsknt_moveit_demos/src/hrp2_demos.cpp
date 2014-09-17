@@ -37,6 +37,7 @@
 */
 
 #include <ros/ros.h>
+#include <ros/package.h> // for getting file path of package names
 
 // MoveIt!
 #include <moveit/robot_model_loader/robot_model_loader.h>
@@ -95,9 +96,6 @@ class HRP2Demos
 private:
 
   ros::NodeHandle nh_;
-
-  //moveit_msgs::DisplayRobotState display_robot_msg_;
-  //moveit_msgs::DisplayTrajectory display_trajectory_msg_;
 
   robot_model_loader::RobotModelLoader robot_model_loader_;
   robot_model::RobotModelPtr robot_model_;
@@ -207,7 +205,7 @@ public:
     }
 
     // Always prevent feet from going into floor
-    visual_tools_->publishCollisionFloor(0, "Floor");
+    //visual_tools_->publishCollisionFloor(0, "Floor"); // DOES NOT WORK?
 
     std::ofstream logging_file;
     logging_file.open("/home/dave/ompl_storage/lightning_logging.csv");
@@ -217,12 +215,10 @@ public:
     //fixRobotStateFoot(goal_state_, 1.0, 0.5);
 
     // Create a constraint sampler for random poses
-    //loadConstraintSampler(verbose);
     loadConstraintSampler(verbose);
 
     // Set custom validity checker for balance constraints
     loadHumanoidStabilityChecker(verbose);
-    bool verbose_feasibility = true;
     planning_scene_->setStateFeasibilityPredicate(humanoid_stability_->getStateFeasibilityFn());
 
     // Load planning
@@ -250,7 +246,7 @@ public:
       std::cout << std::endl;
       std::cout << std::endl;
 
-      genRandWholeBodyPlans(verbose, use_experience, use_collisions, planning_context_handle);
+      genRandWholeBodyPlans(verbose, use_experience, planning_context_handle);
 
       // Save all contexts to a set
       planning_context_handles.insert(planning_context_handle);
@@ -274,6 +270,8 @@ public:
         lightning->printLogs();
         lightning->saveDataLog(logging_file);
         logging_file.flush();
+        if (verbose)
+          ros::Duration(2).sleep(); // allow trajectory to play
       }
 
       // Save database every 20 paths
@@ -296,7 +294,7 @@ public:
 
   }
 
-  void genRandWholeBodyPlans(bool verbose, bool use_experience, bool use_collisions, planning_interface::PlanningContextPtr &planning_context_handle)
+  void genRandWholeBodyPlans(bool verbose, bool use_experience, planning_interface::PlanningContextPtr &planning_context_handle)
   {
     // Use constraint sampler to find valid random state
     ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random start and goal states");
@@ -313,6 +311,19 @@ public:
     std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
     setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
 
+    // Update virtual joint transform to fake base
+    robot_state_->updateStateWithFakeBase();
+
+    // Visualize
+    if (verbose)
+    {
+      visual_tools_->publishRobotState(robot_state_);
+      std::cout << "Visualizing robot state " << std::endl;
+      ros::Duration(2).sleep();
+
+      visual_tools_->hideRobot();
+    }
+
     ROS_INFO_STREAM_NAMED("temp","Starting to look for goal state...");
     while(true)
     {
@@ -321,10 +332,15 @@ public:
         ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
         return;
       }
-      // Updase virtual joint transform to fake base
+      // Update virtual joint transform to fake base
       goal_state_->updateStateWithFakeBase();
 
-      visual_tools_->publishRobotState(goal_state_);
+      if (verbose)
+      {
+        visual_tools_->publishRobotState(goal_state_);
+        ros::Duration(2).sleep();
+      }
+      /*
       std::cout << "Visualizing goal state " << std::endl;
       std::cout << "Is this a good goal state? " << std::endl;
       char c = std::cin.get();
@@ -335,25 +351,15 @@ public:
 
       if (mode == 1)
         break;
-    }
-    std::cout << "Keeping goal state " << std::endl;
+      */
 
-    // Updase virtual joint transform to fake base
-    robot_state_->updateStateWithFakeBase();
-
-    // Visualize
-    if (verbose || true)
-    {
-      visual_tools_->publishRobotState(robot_state_);
-      std::cout << "Visualizing robot state " << std::endl;
-      ros::Duration(4).sleep();
-
-      visual_tools_->hideRobot();
+      break;
     }
 
     // Plan to pose
     genRandWholeBodyPlan(verbose, use_experience, planning_context_handle, robot_state_, goal_state_);
 
+    /*
     // Plan back to start
     std::cout << "Continue planning back to start?" << std::endl;
     char c = std::cin.get();
@@ -364,6 +370,7 @@ public:
 
     if (mode == 1)
       genRandWholeBodyPlan(verbose, use_experience, planning_context_handle, goal_state_, robot_state_);
+    */
   }
 
   void genRandWholeBodyPlan(bool verbose, bool use_experience, planning_interface::PlanningContextPtr &planning_context_handle,
@@ -391,7 +398,7 @@ public:
     req.planner_id = "RRTConnectkConfigDefault";
     req.group_name = planning_group_name_;
     req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning correctly
-    req.allowed_planning_time = 60*10; // second
+    req.allowed_planning_time = 60; // second
     req.use_experience = use_experience;
 
     // Call pipeline
@@ -408,16 +415,18 @@ public:
         ROS_INFO_STREAM_NAMED("hrp2_demos","Attempting to visualize trajectory anyway...");
     }
 
-    if (verbose || true)
+    // Show the trajectory
+    if (verbose)
     {
       // Create planning request
       moveit_msgs::MotionPlanResponse response;
       response.trajectory = moveit_msgs::RobotTrajectory();
       res.getMessage(response);
 
-      std::cout << "Trajectory debug:\n " << response.trajectory << std::endl;
+      //std::cout << "Trajectory debug:\n " << response.trajectory << std::endl;
 
       // Optionally publish
+      /*
       if (true)
       {
         control_msgs::FollowJointTrajectoryGoal goal;
@@ -432,11 +441,13 @@ public:
         ros::spinOnce();
         controller_action_client_->sendGoal(goal);
       }
+      */
 
       // Visualize the trajectory
       ROS_INFO("Visualizing the trajectory");
       //visual_tools_->hideRobot(); // hide the other robot so that we can see the trajectory TODO bug?
-      visual_tools_->publishTrajectoryPath(response.trajectory, true);
+      bool wait_for_trajetory = false;
+      visual_tools_->publishTrajectoryPath(response.trajectory, wait_for_trajetory);
 
     }
     else
@@ -477,6 +488,7 @@ public:
     ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
     ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
     ompl_visual_tools_->setStateSpace(model_state_space);
+    ompl_visual_tools_->deleteAllMarkers(); // clear all old markers
 
     // Get tip links for this setup
     std::vector<const robot_model::LinkModel*> tips;
@@ -487,6 +499,7 @@ public:
 
     // Loop through each path
     problems = !problems ? std::numeric_limits<int>::max() : problems; // if 0, show all problems
+    std::cout << "Looping for " << problems << " problems" << std::endl;
     for (std::size_t path_id = 0; path_id < std::min(int(paths.size()), problems); ++path_id)
     {
       std::cout << "Processing path " << path_id << std::endl;
@@ -810,9 +823,17 @@ public:
 
   void jskLabCollisionEnvironment()
   {
-    //static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2.scene";
-    static const std::string path = "/home/dave/2014/GSoC/planning_scenes/room73b2-without-floor.scene";
-    visual_tools_->loadCollisionSceneFromFile(path);
+    // Get image path based on package name
+    std::string image_path = ros::package::getPath("hrp2jsknt_moveit_demos");
+    if( image_path.empty() )
+    {
+      ROS_ERROR( "Unable to get hrp2jsknt_moveit_demos package path " );
+      exit(99);
+    }
+
+    //"/resources/room73b2.scene";
+    image_path.append("/resources/room73b2-without-floor.scene");
+    visual_tools_->loadCollisionSceneFromFile(image_path);
   }
 
   void fixRobotStateFoot(robot_state::RobotStatePtr &robot_state, double x, double y)
@@ -1699,7 +1720,7 @@ int main(int argc, char **argv)
     if (!ros::ok())
       break;
 
-    exit(0); // temp
+    /*
 
     // Prompt user
     std::cout << "Last mode was " << mode << ". Next demo mode (1-x, 0 to quit):";
@@ -1731,6 +1752,8 @@ int main(int argc, char **argv)
     // Exit program
     if (mode == 9)
       break;
+    */
+    break;
   }
 
   ROS_INFO_STREAM("Shutting down.");

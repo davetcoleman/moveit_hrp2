@@ -384,6 +384,92 @@
         <joint name="LARM_JOINT5" value="-0.6675" />
         <joint name="LARM_JOINT6" value="-0.433" />
     </group_state>
+     <group name="whole_body_minus_right_leg">
+         <joint name="CHEST_JOINT0" />
+         <joint name="CHEST_JOINT1" />
+         <joint name="LARM_JOINT0" />
+         <joint name="LARM_JOINT1" />
+         <joint name="LARM_JOINT2" />
+         <joint name="LARM_JOINT3" />
+         <joint name="LARM_JOINT4" />
+         <joint name="LARM_JOINT5" />
+         <joint name="LARM_JOINT6" />
+         <joint name="RARM_JOINT0" />
+         <joint name="RARM_JOINT1" />
+         <joint name="RARM_JOINT2" />
+         <joint name="RARM_JOINT3" />
+         <joint name="RARM_JOINT4" />
+         <joint name="RARM_JOINT5" />
+         <joint name="RARM_JOINT6" />
+         <joint name="LLEG_JOINT0" />
+         <joint name="LLEG_JOINT1" />
+         <joint name="LLEG_JOINT2" />
+         <joint name="LLEG_JOINT3" />
+         <joint name="LLEG_JOINT4" />
+         <joint name="LLEG_JOINT5" />
+     </group>
+     <group_state name="one_foot_transition" group="whole_body">
+       <joint name="RLEG_JOINT0" value="0.006667" />
+       <joint name="RLEG_JOINT1" value="0.22975" />
+       <joint name="RLEG_JOINT2" value="-0.369626" />
+       <joint name="RLEG_JOINT3" value="0.817204" />
+       <joint name="RLEG_JOINT4" value="-0.447577" />
+       <joint name="RLEG_JOINT5" value="-0.22975" />
+       <joint name="RLEG_JOINT6" value="0.0" />
+       <joint name="LLEG_JOINT0" value="0.006667" />
+       <joint name="LLEG_JOINT1" value="0.226505" />
+       <joint name="LLEG_JOINT2" value="-0.296661" />
+       <joint name="LLEG_JOINT3" value="0.671917" />
+       <joint name="LLEG_JOINT4" value="-0.375256" />
+       <joint name="LLEG_JOINT5" value="-0.226505" />
+       <joint name="LLEG_JOINT6" value="0.0" />
+       <joint name="CHEST_JOINT0" value="0.0" />
+       <joint name="CHEST_JOINT1" value="0.0" />
+       <joint name="RARM_JOINT0" value="0.174533" />
+       <joint name="RARM_JOINT1" value="-0.174533" />
+       <joint name="RARM_JOINT2" value="0.0" />
+       <joint name="RARM_JOINT3" value="-0.436332" />
+       <joint name="RARM_JOINT4" value="0.0" />
+       <joint name="RARM_JOINT5" value="0.0" />
+       <joint name="RARM_JOINT6" value="-0.174533" />
+       <joint name="LARM_JOINT0" value="0.174533" />
+       <joint name="LARM_JOINT1" value="0.174533" />
+       <joint name="LARM_JOINT2" value="0.0" />
+       <joint name="LARM_JOINT3" value="-0.436332" />
+       <joint name="LARM_JOINT4" value="0.0" />
+       <joint name="LARM_JOINT5" value="0.0" />
+       <joint name="LARM_JOINT6" value="-0.174533" />
+     </group_state>
+     <group_state name="one_foot_start" group="whole_body">
+         <joint name="CHEST_JOINT0" value="0" />
+         <joint name="CHEST_JOINT1" value="0" />
+         <joint name="LARM_JOINT0" value="0.174533" />
+         <joint name="LARM_JOINT1" value="0.174533" />
+         <joint name="LARM_JOINT2" value="0" />
+         <joint name="LARM_JOINT3" value="-0.436332" />
+         <joint name="LARM_JOINT4" value="0" />
+         <joint name="LARM_JOINT5" value="0" />
+         <joint name="LARM_JOINT6" value="-0.174533" />
+         <joint name="LLEG_JOINT0" value="0.00664485" />
+         <joint name="LLEG_JOINT1" value="0.248051" />
+         <joint name="LLEG_JOINT2" value="-0.484024" />
+         <joint name="LLEG_JOINT3" value="1.05374" />
+         <joint name="LLEG_JOINT4" value="-0.569716" />
+         <joint name="LLEG_JOINT5" value="-0.248051" />
+         <joint name="RARM_JOINT0" value="0.174533" />
+         <joint name="RARM_JOINT1" value="-0.174533" />
+         <joint name="RARM_JOINT2" value="0" />
+         <joint name="RARM_JOINT3" value="-0.436332" />
+         <joint name="RARM_JOINT4" value="0" />
+         <joint name="RARM_JOINT5" value="0" />
+         <joint name="RARM_JOINT6" value="-0.174533" />
+         <joint name="RLEG_JOINT0" value="0.00664476" />
+         <joint name="RLEG_JOINT1" value="0.229617" />
+         <joint name="RLEG_JOINT2" value="-0.369751" />
+         <joint name="RLEG_JOINT3" value="0.81732" />
+         <joint name="RLEG_JOINT4" value="-0.447569" />
+         <joint name="RLEG_JOINT5" value="-0.229617" />
+     </group_state>
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="right_eef" parent_link="RARM_LINK6" group="right_hand" parent_group="right_arm" />
     <end_effector name="left_eef" parent_link="LARM_LINK6" group="left_hand" parent_group="left_arm" />
