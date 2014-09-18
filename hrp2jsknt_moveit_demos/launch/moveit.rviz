@@ -1540,21 +1540,21 @@ Visualization Manager:
       Value: true
       Visual Enabled: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: ompl_rviz_markers
       Name: OMPL Viewer Markers
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /hrp2_visual_markers
       Name: HRP2 Demos Marker
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /hrp2jsknt_moveit_demos/display_contacts
@@ -1624,4 +1624,4 @@ Window Geometry:
     collapsed: false
   Width: 1912
   X: -7
-  Y: -3
+  Y: -7

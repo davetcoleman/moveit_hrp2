@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(hrp2jsknt_moveit_demos)
 
 find_package(catkin REQUIRED COMPONENTS
+  ompl_thunder
   moveit_humanoid_stability
   moveit_core
   ompl_visual_tools
@@ -20,6 +21,7 @@ find_package(Boost REQUIRED system filesystem date_time thread)
 catkin_package(
 #  INCLUDE_DIRS include
   CATKIN_DEPENDS
+    ompl_thunder
     moveit_humanoid_stability
     moveit_core
     ompl_visual_tools
