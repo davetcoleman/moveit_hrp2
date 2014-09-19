@@ -84,6 +84,8 @@
 #include <boost/pointer_cast.hpp>
 
 // C++
+#include <iostream>
+#include <fstream>
 #include <limits>       // std::numeric_limits
 
 namespace hrp2jsknt_moveit_demos
@@ -217,11 +219,11 @@ public:
     // Always prevent feet from going into floor
     //visual_tools_->publishCollisionFloor(0, "Floor"); // DOES NOT WORK?
 
-    std::ofstream logging_file;
+    std::ofstream logging_file; // open to append
     if (use_thunder_)
-      logging_file.open("/home/dave/ompl_storage/thunder_logging.csv");
+      logging_file.open("/home/dave/ompl_storage/thunder_logging.csv", std::ios::out | std::ios::app);
     else
-      logging_file.open("/home/dave/ompl_storage/lightning_logging.csv");
+      logging_file.open("/home/dave/ompl_storage/lightning_logging.csv", std::ios::out | std::ios::app);
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
@@ -289,8 +291,9 @@ public:
           ros::Duration(2).sleep(); // allow trajectory to play
       }
 
-      // Save database every 20 paths
-      if ((i+1) % 20 == 0 && (use_experience || true))
+      // Save database periodically
+      int save_every = i / 10 + 10; // problems
+      if ((i+1) % save_every == 0 && (use_experience || true))
       {
         ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
         experience_setup->saveIfChanged();
@@ -311,50 +314,6 @@ public:
       displayThunderDatabase(experience_setup, model_state_space);
     }
 
-  }
-
-  bool displayThunderDatabase(ompl::tools::ExperienceSetupPtr experience_setup,
-                              const ompl_interface::ModelBasedStateSpacePtr model_state_space)
-  {
-      // Get all of the paths in the database
-      std::vector<ompl::base::PlannerDataPtr> graphs;
-      experience_setup->getAllPlannerDatas(graphs);
-
-      // Load the OMPL visualizer
-      if (!ompl_visual_tools_)
-      {
-        ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
-        ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
-      }
-      ompl_visual_tools_->setStateSpace(model_state_space);
-      ompl_visual_tools_->deleteAllMarkers(); // clear all old markers
-
-      // Get tip links for this setup
-      std::vector<const robot_model::LinkModel*> tips;
-      getNonFixedRobotTips(tips);
-
-      ompl_visual_tools_->publishRobotGraph(graphs[0], tips);   
-
-  }
-
-  void getNonFixedRobotTips(std::vector<const robot_model::LinkModel*> &tips)
-  {
-      // Remove the tip that is fixed to save display time
-      joint_model_group_->getEndEffectorTips(tips);
-      std::cout << "Found " << tips.size() << " tips" << std::endl;
-      std::size_t delete_index = tips.size();
-      for (std::size_t i = 0; i < tips.size(); ++i)
-      {
-          if (tips[i] == robot_state_->getFixedFoot())
-          {
-              std::cout << "Not displaying tip " << tips[i]->getName() << " because it is fixed" < std::endl;
-              delete_index = i;
-          }
-      }
-      if (delete_index < tips.size())
-      {
-          tips.erase( tips.begin() + delete_index );
-      }
   }
 
   void genRandWholeBodyPlans(bool verbose, bool use_experience, planning_interface::PlanningContextPtr &planning_context_handle)
@@ -527,6 +486,50 @@ public:
     }
 
 
+  }
+
+  bool displayThunderDatabase(ompl::tools::ExperienceSetupPtr experience_setup,
+                              const ompl_interface::ModelBasedStateSpacePtr model_state_space)
+  {
+      // Get all of the paths in the database
+      std::vector<ompl::base::PlannerDataPtr> graphs;
+      experience_setup->getAllPlannerDatas(graphs);
+
+      // Load the OMPL visualizer
+      if (!ompl_visual_tools_)
+      {
+        ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
+        ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
+      }
+      ompl_visual_tools_->setStateSpace(model_state_space);
+      ompl_visual_tools_->deleteAllMarkers(); // clear all old markers
+
+      // Get tip links for this setup
+      std::vector<const robot_model::LinkModel*> tips;
+      getNonFixedRobotTips(tips);
+
+      ompl_visual_tools_->publishRobotGraph(graphs[0], tips);   
+
+  }
+
+  void getNonFixedRobotTips(std::vector<const robot_model::LinkModel*> &tips)
+  {
+      // Remove the tip that is fixed to save display time
+      joint_model_group_->getEndEffectorTips(tips);
+      std::cout << "Found " << tips.size() << " tips" << std::endl;
+      std::size_t delete_index = tips.size();
+      for (std::size_t i = 0; i < tips.size(); ++i)
+      {
+          if (tips[i] == robot_state_->getFixedFoot())
+          {
+              std::cout << "Not displaying tip " << tips[i]->getName() << " because it is fixed" << std::endl;
+              delete_index = i;
+          }
+      }
+      if (delete_index < tips.size())
+      {
+          tips.erase( tips.begin() + delete_index );
+      }
   }
 
   void displayDBPlans(int problems, bool verbose)
