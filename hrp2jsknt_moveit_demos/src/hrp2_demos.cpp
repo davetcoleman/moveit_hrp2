@@ -52,9 +52,10 @@
 
 // OMPL
 #include <moveit/ompl_interface/model_based_planning_context.h>
+#include <moveit/ompl_interface/parameterization/model_based_state_space.h>
 #include <moveit/ompl_interface/parameterization/joint_space/joint_model_state_space.h>
 #include <moveit/ompl_interface/parameterization/joint_space/joint_model_state_space_factory.h>
-//#include <ompl/tools/lightning/Lightning.h>
+#include <ompl/tools/lightning/Lightning.h>
 #include <ompl_thunder/Thunder.h>
 #include <ompl_visual_tools/ompl_visual_tools.h>
 
@@ -128,13 +129,15 @@ private:
   // Tool for checking balance
   moveit_humanoid_stability::HumanoidStabilityPtr humanoid_stability_;
 
-
+  bool use_thunder_;
+  
 public:
   HRP2Demos(const std::string planning_group_name)
     : nh_("~")
     , robot_model_loader_(ROBOT_DESCRIPTION) // load the URDF
     , planning_group_name_(planning_group_name)
     , whole_body_group_name_("whole_body")
+    , use_thunder_(false)
   {
     // Load the robot model
     robot_model_ = robot_model_loader_.getModel(); // Get a shared pointer to the robot
@@ -186,10 +189,16 @@ public:
       humanoid_stability_.reset(new moveit_humanoid_stability::HumanoidStability(verbose, *robot_state_, visual_tools_));
   }
 
+  void setUseThunder(bool use_thunder)
+  {
+    use_thunder_ = use_thunder;
+  }
+
   // Whole body planning with MoveIt!
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
   void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions)
   {
+
     // Load planning scene monitor so that we can publish a collision enviornment to rviz
     if (!loadPlanningSceneMonitor())
       return;
@@ -209,7 +218,10 @@ public:
     //visual_tools_->publishCollisionFloor(0, "Floor"); // DOES NOT WORK?
 
     std::ofstream logging_file;
-    logging_file.open("/home/dave/ompl_storage/thunder_logging.csv");
+    if (use_thunder_)
+      logging_file.open("/home/dave/ompl_storage/thunder_logging.csv");
+    else
+      logging_file.open("/home/dave/ompl_storage/lightning_logging.csv");
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
@@ -231,7 +243,8 @@ public:
     // Remember all planning context handles so we can save to file in the end
     std::set<planning_interface::PlanningContextPtr> planning_context_handles;
 
-    ompl::tools::ThunderPtr thunder;
+    ompl::tools::ExperienceSetupPtr experience_setup;
+    ompl_interface::ModelBasedStateSpacePtr model_state_space;
 
     // Loop through planning
     for (std::size_t i = 0; i < problems; ++i)
@@ -261,15 +274,16 @@ public:
       if (i == 0 && (use_experience || true))
       {
         ompl_interface::ModelBasedPlanningContextPtr mbpc = boost::dynamic_pointer_cast<ompl_interface::ModelBasedPlanningContext>(planning_context_handle);
-        thunder = boost::dynamic_pointer_cast<ompl::tools::Thunder>(mbpc->getOMPLSimpleSetup());
+        experience_setup = boost::dynamic_pointer_cast<ompl::tools::ExperienceSetup>(mbpc->getOMPLSimpleSetup());
+        model_state_space = mbpc->getOMPLStateSpace();
       }
 
       // Debugging
       if (use_experience || true)
       {
         std::cout << std::endl;
-        thunder->printLogs();
-        thunder->saveDataLog(logging_file);
+        experience_setup->printLogs();
+        experience_setup->saveDataLog(logging_file);
         logging_file.flush();
         if (verbose)
           ros::Duration(2).sleep(); // allow trajectory to play
@@ -279,7 +293,7 @@ public:
       if ((i+1) % 20 == 0 && (use_experience || true))
       {
         ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
-        thunder->saveIfChanged();
+        experience_setup->saveIfChanged();
       }
 
     }
@@ -290,7 +304,31 @@ public:
     if (use_experience || true)
     {
       ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
-      thunder->saveIfChanged();
+      experience_setup->saveIfChanged();
+
+
+      // Display database -------------------------
+
+      // Get all of the paths in the database
+      std::vector<ompl::base::PlannerDataPtr> graphs;
+      experience_setup->getAllPlannerDatas(graphs);
+
+      // Load the OMPL visualizer
+      if (!ompl_visual_tools_)
+      {
+        ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
+        ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
+      }
+      ompl_visual_tools_->setStateSpace(model_state_space);
+      ompl_visual_tools_->deleteAllMarkers(); // clear all old markers
+
+      // Get tip links for this setup
+      std::vector<const robot_model::LinkModel*> tips;
+      joint_model_group_->getEndEffectorTips(tips);
+      std::cout << "Found " << tips.size() << " tips" << std::endl;
+
+      ompl_visual_tools_->publishRobotGraph(graphs[0], tips);
+      
     }
 
   }
@@ -398,9 +436,17 @@ public:
     // Other settings
     req.planner_id = "RRTConnectkConfigDefault";
     req.group_name = planning_group_name_;
-    req.num_planning_attempts = 1; // this must be one else it threads and doesn't use thunder correctly
+    req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning/thunder correctly
     req.allowed_planning_time = 60; // second
     req.use_experience = use_experience;
+    if (use_thunder_)
+    {
+      req.experience_method = "thunder";
+    }
+    else
+    {
+     req.experience_method = "lightning";
+    }
 
     // Call pipeline
     std::vector<std::size_t> dummy;
@@ -459,6 +505,18 @@ public:
 
   }
 
+  void displayDBPlans(int problems, bool verbose)
+  {
+    if (use_thunder_)
+    {
+      displayThunderPlans(problems, verbose);
+    }
+    else
+    {
+      displayLightningPlans(problems, verbose);
+    }   
+  }
+
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=2 group:=left_arm verbose:=1
   void displayLightningPlans(int problems, bool verbose)
   {
@@ -477,11 +535,11 @@ public:
 
     // Load lightning and its database
     ompl::tools::Lightning lightning(model_state_space);
-    lightning.load(joint_model_group_->getName());
+    lightning.setFile(joint_model_group_->getName());
 
     // Get all of the paths in the database
     std::vector<ompl::base::PlannerDataPtr> paths;
-    lightning.getAllPaths(paths);
+    lightning.getAllPlannerDatas(paths);
 
     ROS_INFO_STREAM_NAMED("hrp2_demos","Number of paths to publish: " << paths.size());
 
@@ -527,50 +585,29 @@ public:
 
     // Load thunder and its database
     ompl::tools::Thunder thunder(model_state_space);
-    //thunder.setup(); // must be called before load
-    thunder.load(joint_model_group_->getName());
+    thunder.setFile(joint_model_group_->getName());
+    thunder.setup(); // must be called before load
 
     // Get all of the paths in the database
     std::vector<ompl::base::PlannerDataPtr> graphs;
     thunder.getAllPlannerDatas(graphs);
 
-    ROS_INFO_STREAM_NAMED("hrp2_demos","Number of graphs to publish: " << graphs.size());
-
     // Load the OMPL visualizer
-    ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
-    ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
+    if (!ompl_visual_tools_)
+    {
+      ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
+      ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
+    }
     ompl_visual_tools_->setStateSpace(model_state_space);
     ompl_visual_tools_->deleteAllMarkers(); // clear all old markers
-
-    // Show all graphs
-    /*
-    for (std::size_t i = 0; i < graphs.size(); ++i)
-    {
-      //std::cout << "   publishDatabase() - graph " << i << " of " << graphs.size() << std::endl;
-      ompl_visual_tools_->publishGraph( graphs[i], moveit_visual_tools::BLUE );
-      ompl_visual_tools_->publishSamples( graphs[i] );
-    }
-    */
 
     // Get tip links for this setup
     std::vector<const robot_model::LinkModel*> tips;
     joint_model_group_->getEndEffectorTips(tips);
     std::cout << "Found " << tips.size() << " tips" << std::endl;
 
-    bool show_trajectory_animated = verbose;
-
-
     ompl_visual_tools_->publishRobotGraph(graphs[0], tips);
 
-    // Loop through each path
-    /*problems = !problems ? std::numeric_limits<int>::max() : problems; // if 0, show all problems
-    std::cout << "Looping for " << problems << " problems" << std::endl;
-    for (std::size_t path_id = 0; path_id < std::min(int(graphs.size()), problems); ++path_id)
-    {
-      std::cout << "Processing path " << path_id << std::endl;
-      ompl_visual_tools_->publishRobotPath(graphs[path_id], joint_model_group_, tips, show_trajectory_animated);
-    }
-    */
   } // function
 
   // Use two IK solvers to find leg positions
@@ -1654,6 +1691,7 @@ int main(int argc, char **argv)
   bool verbose = false;
   bool use_experience = true;
   bool use_collisions = false;
+  bool use_thunder = true;
   std::string planning_group_name = "whole_body";
   std::size_t seed = 0;
 
@@ -1715,9 +1753,16 @@ int main(int argc, char **argv)
       use_collisions = atoi(argv[i]);
       ROS_INFO_STREAM_NAMED("main","Using collisions: " << use_collisions);
     }
-  }
 
+    if( std::string(argv[i]).compare("--use_thunder") == 0 )
+    {
+      ++i;
+      use_thunder = atoi(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","Using Thunder (vs. Lightning): " << use_thunder);
+    }
+  }
   hrp2jsknt_moveit_demos::HRP2Demos client(planning_group_name);
+  client.setUseThunder(use_thunder);
 
   while (ros::ok()) // continuously prompt user to do demos
   {
@@ -1738,7 +1783,7 @@ int main(int argc, char **argv)
           break;
         case 2:
           ROS_INFO_STREAM_NAMED("hrp2_demos","2 - Show the experience database visually in Rviz");
-          client.displayThunderPlans(problems, verbose);
+          client.displayDBPlans(problems, verbose);
           break;
         case 3:
           ROS_WARN_STREAM_NAMED("hrp2_demos","3 - Test foot fixed feature");
