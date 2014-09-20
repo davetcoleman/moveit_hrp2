@@ -132,7 +132,7 @@ private:
   moveit_humanoid_stability::HumanoidStabilityPtr humanoid_stability_;
 
   bool use_thunder_;
-  
+
 public:
   HRP2Demos(const std::string planning_group_name)
     : nh_("~")
@@ -323,13 +323,13 @@ public:
     int attempts = 10000;
 
     /*
-    if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
-    {
+      if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
+      {
       ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
       return;
-    }
+      }
     */
-    static const std::string state_name = "one_foot_transition"; //one_foot_start";    
+    static const std::string state_name = "one_foot_transition"; //one_foot_start";
     std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
     setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
 
@@ -363,15 +363,15 @@ public:
         ros::Duration(2).sleep();
       }
       /*
-      std::cout << "Visualizing goal state " << std::endl;
-      std::cout << "Is this a good goal state? " << std::endl;
-      char c = std::cin.get();
-      int mode = c - '0';
-      std::cout << "key: " << c << " mode: " << mode << std::endl;
-      // eat enter key character
-      c = std::cin.get();      
+        std::cout << "Visualizing goal state " << std::endl;
+        std::cout << "Is this a good goal state? " << std::endl;
+        char c = std::cin.get();
+        int mode = c - '0';
+        std::cout << "key: " << c << " mode: " << mode << std::endl;
+        // eat enter key character
+        c = std::cin.get();
 
-      if (mode == 1)
+        if (mode == 1)
         break;
       */
 
@@ -388,10 +388,10 @@ public:
     int mode = c - '0';
     std::cout << "key: " << c << " mode: " << mode << std::endl;
     // eat enter key character
-    c = std::cin.get();      
+    c = std::cin.get();
 
     if (mode == 1)
-      genRandWholeBodyPlan(verbose, use_experience, planning_context_handle, goal_state_, robot_state_);
+    genRandWholeBodyPlan(verbose, use_experience, planning_context_handle, goal_state_, robot_state_);
     */
   }
 
@@ -428,7 +428,7 @@ public:
     }
     else
     {
-     req.experience_method = "lightning";
+      req.experience_method = "lightning";
     }
 
     // Call pipeline
@@ -457,20 +457,20 @@ public:
 
       // Optionally publish
       /*
-      if (true)
-      {
+        if (true)
+        {
         control_msgs::FollowJointTrajectoryGoal goal;
         goal.trajectory = response.trajectory.joint_trajectory;
 
         boost::shared_ptr<actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction> > controller_action_client_;
         controller_action_client_.reset(new actionlib::SimpleActionClient<control_msgs::FollowJointTrajectoryAction>
-                                        ("hrp2jsknt/follow_joint_trajectory_action", true));
+        ("hrp2jsknt/follow_joint_trajectory_action", true));
 
         ros::spinOnce();
         ros::Duration(2).sleep();
         ros::spinOnce();
         controller_action_client_->sendGoal(goal);
-      }
+        }
       */
 
       // Visualize the trajectory
@@ -491,45 +491,45 @@ public:
   bool displayThunderDatabase(ompl::tools::ExperienceSetupPtr experience_setup,
                               const ompl_interface::ModelBasedStateSpacePtr model_state_space)
   {
-      // Get all of the paths in the database
-      std::vector<ompl::base::PlannerDataPtr> graphs;
-      experience_setup->getAllPlannerDatas(graphs);
+    // Get all of the paths in the database
+    std::vector<ompl::base::PlannerDataPtr> graphs;
+    experience_setup->getAllPlannerDatas(graphs);
 
-      // Load the OMPL visualizer
-      if (!ompl_visual_tools_)
-      {
-        ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
-        ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
-      }
-      ompl_visual_tools_->setStateSpace(model_state_space);
-      ompl_visual_tools_->deleteAllMarkers(); // clear all old markers
+    // Load the OMPL visualizer
+    if (!ompl_visual_tools_)
+    {
+      ompl_visual_tools_.reset(new ompl_visual_tools::OmplVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
+      ompl_visual_tools_->loadRobotStatePub("/hrp2_demos");
+    }
+    ompl_visual_tools_->setStateSpace(model_state_space);
+    ompl_visual_tools_->deleteAllMarkers(); // clear all old markers
 
-      // Get tip links for this setup
-      std::vector<const robot_model::LinkModel*> tips;
-      getNonFixedRobotTips(tips);
+    // Get tip links for this setup
+    std::vector<const robot_model::LinkModel*> tips;
+    getNonFixedRobotTips(tips);
 
-      ompl_visual_tools_->publishRobotGraph(graphs[0], tips);   
+    ompl_visual_tools_->publishRobotGraph(graphs[0], tips);
 
   }
 
   void getNonFixedRobotTips(std::vector<const robot_model::LinkModel*> &tips)
   {
-      // Remove the tip that is fixed to save display time
-      joint_model_group_->getEndEffectorTips(tips);
-      std::cout << "Found " << tips.size() << " tips" << std::endl;
-      std::size_t delete_index = tips.size();
-      for (std::size_t i = 0; i < tips.size(); ++i)
+    // Remove the tip that is fixed to save display time
+    joint_model_group_->getEndEffectorTips(tips);
+    std::cout << "Found " << tips.size() << " tips" << std::endl;
+    std::size_t delete_index = tips.size();
+    for (std::size_t i = 0; i < tips.size(); ++i)
+    {
+      if (tips[i] == robot_state_->getFixedFoot())
       {
-          if (tips[i] == robot_state_->getFixedFoot())
-          {
-              std::cout << "Not displaying tip " << tips[i]->getName() << " because it is fixed" << std::endl;
-              delete_index = i;
-          }
+        //std::cout << "Not displaying tip " << tips[i]->getName() << " because it is fixed" << std::endl;
+        delete_index = i;
       }
-      if (delete_index < tips.size())
-      {
-          tips.erase( tips.begin() + delete_index );
-      }
+    }
+    if (delete_index < tips.size())
+    {
+      tips.erase( tips.begin() + delete_index );
+    }
   }
 
   void displayDBPlans(int problems, bool verbose)
@@ -541,7 +541,7 @@ public:
     else
     {
       displayLightningPlans(problems, verbose);
-    }   
+    }
   }
 
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=2 group:=left_arm verbose:=1
@@ -1852,30 +1852,30 @@ int main(int argc, char **argv)
     bool valid_mode = false;
     while (!valid_mode)
     {
-      // Account for just an enter key being pressed:
-      char c = std::cin.get();
-      if (c == '\n')
-      {
-        std::cout << "ENTER KEY PRESSED " << std::endl;
-      }
-      else
-      {
-        mode = c - '0';
-        std::cout << "key: " << c << " mode: " << mode << std::endl;
-        // eat enter key character
-        c = std::cin.get();
-      }
+    // Account for just an enter key being pressed:
+    char c = std::cin.get();
+    if (c == '\n')
+    {
+    std::cout << "ENTER KEY PRESSED " << std::endl;
+    }
+    else
+    {
+    mode = c - '0';
+    std::cout << "key: " << c << " mode: " << mode << std::endl;
+    // eat enter key character
+    c = std::cin.get();
+    }
 
-      // make sure mode is valid
-      if (mode >= 0 && mode <= 9)
-        break;
-      else
-        std::cout << "Invalid mode: " << mode << std::endl;
+    // make sure mode is valid
+    if (mode >= 0 && mode <= 9)
+    break;
+    else
+    std::cout << "Invalid mode: " << mode << std::endl;
     }
 
     // Exit program
     if (mode == 9)
-      break;
+    break;
     */
     break;
   }
