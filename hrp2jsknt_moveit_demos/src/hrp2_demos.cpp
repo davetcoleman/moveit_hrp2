@@ -221,9 +221,9 @@ public:
 
     std::ofstream logging_file; // open to append
     if (use_thunder_)
-      logging_file.open("/home/dave/ompl_storage/thunder_logging.csv", std::ios::out | std::ios::app);
+      logging_file.open("/home/dave/ompl_storage/thunder_whole_body_logging.csv", std::ios::out | std::ios::app);
     else
-      logging_file.open("/home/dave/ompl_storage/lightning_logging.csv", std::ios::out | std::ios::app);
+      logging_file.open("/home/dave/ompl_storage/lightning_whole_body_logging.csv", std::ios::out | std::ios::app);
 
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
@@ -341,9 +341,6 @@ public:
     {
       visual_tools_->publishRobotState(robot_state_);
       std::cout << "Visualizing robot state " << std::endl;
-      //ros::Duration(2).sleep();
-
-      //visual_tools_->hideRobot();
     }
 
     ROS_INFO_STREAM_NAMED("temp","Starting to look for goal state...");
