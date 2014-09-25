@@ -331,16 +331,21 @@ public:
     ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random start and goal states");
     int attempts = 10000;
 
-    /*
+    bool randomStart = false;
+    if (randomStart)
+    {
       if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
       {
-      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
-      return;
+        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
+        return;
       }
-    */
-    static const std::string state_name = "one_foot_transition"; //one_foot_start";
-    std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
-    setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
+    }
+    else
+    {
+      static const std::string state_name = "one_foot_transition"; //one_foot_start";
+      std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
+      setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
+    }
 
     // Update virtual joint transform to fake base
     robot_state_->updateStateWithFakeBase();
@@ -353,35 +358,18 @@ public:
     }
 
     ROS_INFO_STREAM_NAMED("temp","Starting to look for goal state...");
-    while(true)
+    if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
     {
-      if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
-      {
-        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
-        return;
-      }
-      // Update virtual joint transform to fake base
-      goal_state_->updateStateWithFakeBase();
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
+      return;
+    }
+    // Update virtual joint transform to fake base
+    goal_state_->updateStateWithFakeBase();
 
-      if (verbose)
-      {
-        visual_tools_->publishRobotState(goal_state_);
-        ros::Duration(2).sleep();
-      }
-      /*
-        std::cout << "Visualizing goal state " << std::endl;
-        std::cout << "Is this a good goal state? " << std::endl;
-        char c = std::cin.get();
-        int mode = c - '0';
-        std::cout << "key: " << c << " mode: " << mode << std::endl;
-        // eat enter key character
-        c = std::cin.get();
-
-        if (mode == 1)
-        break;
-      */
-
-      break;
+    if (verbose)
+    {
+      visual_tools_->publishRobotState(goal_state_);
+      ros::Duration(2).sleep();
     }
 
     // Plan to pose
@@ -426,7 +414,7 @@ public:
     req.planner_id = "RRTConnectkConfigDefault";
     req.group_name = planning_group_name_;
     req.num_planning_attempts = 1; // this must be one else it threads and doesn't use lightning/thunder correctly
-    req.allowed_planning_time = 60; // second
+    req.allowed_planning_time = 90; // second
     req.use_experience = use_experience;
     if (use_thunder_)
     {
