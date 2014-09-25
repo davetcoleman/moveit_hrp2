@@ -198,19 +198,14 @@ public:
 
   // Whole body planning with MoveIt!
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
-  void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions)
+  void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions, bool variable_obstacles)
   {
 
     // Load planning scene monitor so that we can publish a collision enviornment to rviz
     if (!loadPlanningSceneMonitor())
       return;
 
-    // Show the lab as collision objects
-    if (use_collisions)
-    {
-      jskLabCollisionEnvironment();
-    }
-    else
+    if (!use_collisions)
     {
       ros::Duration(0.25).sleep();
       visual_tools_->removeAllCollisionObjectsPS(); // clear all old collision objects that might be visible in rviz
@@ -220,8 +215,10 @@ public:
     //visual_tools_->publishCollisionFloor(0, "Floor"); // DOES NOT WORK?
 
     std::ofstream logging_file; // open to append
-    if (use_thunder_)
+    if (use_thunder_ && use_experience)
       logging_file.open("/home/dave/ompl_storage/thunder_whole_body_logging.csv", std::ios::out | std::ios::app);
+    else if (use_thunder_ && !use_experience)
+      logging_file.open("/home/dave/ompl_storage/scratch_whole_body_logging.csv", std::ios::out | std::ios::app);
     else
       logging_file.open("/home/dave/ompl_storage/lightning_whole_body_logging.csv", std::ios::out | std::ios::app);
 
@@ -253,6 +250,23 @@ public:
     {
       if (!ros::ok())
         break;
+
+      // Show the lab as collision objects
+      if (use_collisions)
+      {
+        if (variable_obstacles) // republish new coll environement every loop
+        {
+          visual_tools_->removeAllCollisionObjectsPS(); // clear all old collision objects that might be visible in rviz
+          ros::Duration(0.25).sleep();
+
+          int location = moveit_visual_tools::VisualTools::iRand(0,4);
+          jskLabCollisionEnvironment(location);
+        }
+        else if (i == 0) // just publish one coll environment on first go araound
+        {
+          jskLabCollisionEnvironment(0);
+        }
+      }
 
       // Benchmark runtime
       ros::Time start_time;
@@ -369,7 +383,7 @@ public:
     if (verbose)
     {
       visual_tools_->publishRobotState(goal_state_);
-      ros::Duration(2).sleep();
+      ros::Duration(10).sleep();
     }
 
     // Plan to pose
@@ -931,7 +945,56 @@ public:
     return true;
   }
 
-  void jskLabCollisionEnvironment()
+  void publishJskLabCollisionEnvironment(double x, double y)
+  {
+    // Load planning scene monitor so that we can publish a collision enviornment to rviz
+    if (!loadPlanningSceneMonitor())
+      return;
+
+    ros::Duration(1).sleep();
+
+    visual_tools_->deleteAllMarkers(); // clear all old markers
+    visual_tools_->publishRemoveAllCollisionObjects(); // clear all old collision objects that might be visible in rviz
+
+    ros::Duration(1).sleep();
+
+    robot_state_->updateStateWithFakeBase();
+    visual_tools_->publishRobotState(robot_state_);
+
+    // Show the lab as collision objects
+    jskLabCollisionEnvironment(x, y);
+  }
+
+  void jskLabCollisionEnvironment(int location)
+  {
+    double x_offset = 0;
+    double y_offset = 0;
+    std::cout << "JSK Lab location is number " << location << std::endl;
+    switch (location)
+    {
+      case 0: // In front of kitchen island
+        break;
+      case 1: // standing next to chair and TV
+        x_offset = -2.0;
+        y_offset = -0.3;
+        break;
+      case 2: // corner with bookshelves
+        x_offset = -9.25;
+        y_offset = -0.55;
+        break;
+      case 3: // back against wall
+        x_offset = -4.9;
+        y_offset = -0.55;
+        break;
+      case 4:
+        x_offset = -0.6;
+        y_offset = 2.8;
+        break;
+    }
+    jskLabCollisionEnvironment(x_offset, y_offset);
+  }
+
+  void jskLabCollisionEnvironment(double x_offset, double y_offset)
   {
     // Get image path based on package name
     std::string image_path = ros::package::getPath("hrp2jsknt_moveit_demos");
@@ -940,10 +1003,9 @@ public:
       ROS_ERROR( "Unable to get hrp2jsknt_moveit_demos package path " );
       exit(99);
     }
-
-    //"/resources/room73b2.scene";
+    
     image_path.append("/resources/room73b2-without-floor.scene");
-    visual_tools_->loadCollisionSceneFromFile(image_path);
+    visual_tools_->loadCollisionSceneFromFile(image_path, x_offset, y_offset);
   }
 
   void fixRobotStateFoot(robot_state::RobotStatePtr &robot_state, double x, double y)
@@ -1027,8 +1089,8 @@ public:
     if (!loadPlanningSceneMonitor())
       return;
 
-    // Show the lab as collision objects
-    //jskLabCollisionEnvironment();
+    jskLabCollisionEnvironment(0);
+
 
     // Create a constraint sampler for random poses
     loadConstraintSampler(verbose);
@@ -1700,8 +1762,11 @@ int main(int argc, char **argv)
   bool use_experience = true;
   bool use_collisions = false;
   bool use_thunder = true;
+  bool variable_obstacles = false;
   std::string planning_group_name = "whole_body";
   std::size_t seed = 0;
+  double x = 0;
+  double y = 0;
 
   for (std::size_t i = 0; i < argc; ++i)
   {
@@ -1768,9 +1833,31 @@ int main(int argc, char **argv)
       use_thunder = atoi(argv[i]);
       ROS_INFO_STREAM_NAMED("main","Using Thunder (vs. Lightning): " << use_thunder);
     }
+
+    if( std::string(argv[i]).compare("--x") == 0 )
+    {
+      ++i;
+      x = atof(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","x value " << x);
+    }
+
+    if( std::string(argv[i]).compare("--y") == 0 )
+    {
+      ++i;
+      y = atof(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","y value " << y);
+    }
+
+    if( std::string(argv[i]).compare("--variable_obstacles") == 0 )
+    {
+      ++i;
+      variable_obstacles = atoi(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","variable_obstacles: " << variable_obstacles);
+    }
   }
   hrp2jsknt_moveit_demos::HRP2Demos client(planning_group_name);
   client.setUseThunder(use_thunder);
+
 
   while (ros::ok()) // continuously prompt user to do demos
   {
@@ -1787,7 +1874,7 @@ int main(int argc, char **argv)
           break;
         case 1:
           ROS_INFO_STREAM_NAMED("hrp2_demos","1 - Whole body planning with MoveIt!");
-          client.genRandWholeBodyPlans(problems, verbose, use_experience, use_collisions);
+          client.genRandWholeBodyPlans(problems, verbose, use_experience, use_collisions, variable_obstacles);
           break;
         case 2:
           ROS_INFO_STREAM_NAMED("hrp2_demos","2 - Show the experience database visually in Rviz");

@@ -4,6 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
+        - /MotionPlanning1
         - /MotionPlanning1/Scene Geometry1
         - /MotionPlanning1/Planning Request1
         - /MotionPlanning1/Planned Path1
@@ -358,7 +359,7 @@ Visualization Manager:
         Show Robot Collision: false
         Show Robot Visual: true
         Show Trail: false
-        State Display Time: REALTIME
+        State Display Time: 0.5 s
         Trajectory Topic: /hrp2jsknt_moveit_demos/display_planned_path
       Planning Metrics:
         Payload: 1
@@ -1252,7 +1253,7 @@ Visualization Manager:
     - Attached Body Color: 150; 50; 150
       Class: moveit_rviz_plugin/RobotState
       Collision Enabled: false
-      Enabled: true
+      Enabled: false
       Links:
         All Links Enabled: true
         BODY:
@@ -1536,7 +1537,7 @@ Visualization Manager:
       Robot State Topic: /humanoid_constraint_sample_robots
       Show All Links: true
       Show Highlights: true
-      Value: true
+      Value: false
       Visual Enabled: true
     - Class: rviz/Marker
       Enabled: true
@@ -1551,8 +1552,7 @@ Visualization Manager:
       Marker Topic: /hrp2_visual_markers
       Name: HRP2 Demos Marker
       Namespaces:
-        Cylinder: true
-        Spheres: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -1592,22 +1592,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 2.36147
+      Distance: 3.92027
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.3818
-        Y: 1.7171
-        Z: 4.76838e-07
+        X: 1.65576
+        Y: 1.97132
+        Z: -1.3113e-06
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.425398
+      Pitch: 0.485398
       Target Frame: BODY
       Value: XYOrbit (rviz)
-      Yaw: 5.92856
+      Yaw: 5.43173
     Saved: ~
 Window Geometry:
   Displays:

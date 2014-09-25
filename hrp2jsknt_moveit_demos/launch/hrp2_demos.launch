@@ -23,6 +23,9 @@
   <arg name="use_collisions" default="0" />
   <arg name="use_thunder" default="1" />
   <arg name="saving_enabled" default="1" />
+  <arg name="x" default="0" />
+  <arg name="y" default="0" />
+  <arg name="variable_obstacles" default="0" />
 
   <!-- Planning Functionality -->
   <include ns="hrp2jsknt_moveit_demos" file="$(find hrp2jsknt_moveit_config)/launch/planning_pipeline.launch.xml">
@@ -37,7 +40,8 @@
   <node name="hrp2jsknt_moveit_demos" pkg="hrp2jsknt_moveit_demos" type="hrp2_demos" respawn="false" 
 	launch-prefix="$(arg launch_prefix)" output="screen" 
 	args="--mode $(arg mode) --seed $(arg seed) --runs $(arg runs) --problems $(arg problems) --verbose $(arg verbose) --group $(arg group)
-	      --use_experience $(arg use_experience) --use_collisions $(arg use_collisions) --use_thunder $(arg use_thunder) ">
+	      --use_experience $(arg use_experience) --use_collisions $(arg use_collisions) --use_thunder $(arg use_thunder)
+	      --x $(arg x) --y $(arg y) --variable_obstacles $(arg variable_obstacles)">
 
     <!-- DTC Testing -->
     <!--param name="constraint_samplers" value=""/-->
