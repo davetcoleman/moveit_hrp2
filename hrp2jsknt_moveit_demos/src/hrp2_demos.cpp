@@ -196,6 +196,17 @@ public:
     use_thunder_ = use_thunder;
   }
 
+  void printPlanningSceneObjects()
+  {
+    std::cout << std::endl;
+    std::cout << "Objects in world: " << std::endl;
+    for (std::size_t i = 0; i < planning_scene_->getWorld()->getObjectIds().size(); ++i)
+    {
+      std::cout << planning_scene_->getWorld()->getObjectIds()[i] << std::endl;
+    }
+    std::cout << std::endl;
+  }
+
   // Whole body planning with MoveIt!
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
   void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions, bool variable_obstacles)
@@ -225,9 +236,6 @@ public:
     // Move robot to specific place on plane
     //fixRobotStateFoot(robot_state_, 1.0, 0.5);
     //fixRobotStateFoot(goal_state_, 1.0, 0.5);
-
-    // Create a constraint sampler for random poses
-    loadConstraintSampler(verbose);
 
     // Set custom validity checker for balance constraints
     loadHumanoidStabilityChecker(verbose);
@@ -271,7 +279,7 @@ public:
       // Benchmark runtime
       ros::Time start_time;
       start_time = ros::Time::now();
-      
+
       // Display
       std::cout << std::endl;
       std::cout << std::endl;
@@ -289,6 +297,13 @@ public:
       {
         ROS_ERROR_STREAM_NAMED("hrp2_demos","Unexpected: more than 1 planning context now exists");
         exit(-1);
+      }
+
+      // Error check
+      if (!planning_context_handle)
+      {
+        ROS_ERROR_STREAM_NAMED("hrp2_demos","No planning context handle point available");
+        continue; // skip the rest - this is undefined behavior but good for debugging
       }
 
       // Load ptrs on first pass
@@ -341,66 +356,83 @@ public:
 
   void genRandWholeBodyPlans(bool verbose, bool use_experience, planning_interface::PlanningContextPtr &planning_context_handle)
   {
-    // Use constraint sampler to find valid random state
+    // Create a constraint sampler for random poses
+    loadConstraintSampler(verbose); // TODO: this is inefficient, it would be better if we just did this once, but the problem is that changing plannning scenes do not work
+
+    // Get a START state ------------------------------------------------------------
     ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random start and goal states");
     int attempts = 10000;
 
-    bool randomStart = false;
-    if (randomStart)
+    for (std::size_t i = 0; i < 20; ++i)
     {
-      if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
+
+
+      bool randomStart = true;
+      if (randomStart)
       {
-        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
+        if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
+        {
+          ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
+          return;
+        }
+      }
+      else
+      {
+        static const std::string state_name = "one_foot_transition"; //one_foot_start";
+        std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
+        setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
+      }
+
+      // Update virtual joint transform to fake base
+      robot_state_->updateStateWithFakeBase();
+
+      // Error check
+      bool check_verbose = true;
+      if (!planning_scene_->isStateValid(*robot_state_, "", check_verbose)) // second argument is what planning group to collision check, "" is everything
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Start state is not valid!");
+
+
+        // Visualize
+        if (verbose || true)
+        {
+          visual_tools_->publishRobotState(robot_state_);
+          std::cout << "Visualizing start state " << std::endl;
+          ros::Duration(3.0).sleep();
+        }
+        exit(0);
+      }
+
+      // Get a GOAL state ---------------------------------------------------
+      ROS_INFO_STREAM_NAMED("temp","Starting to look for goal state...");
+      if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
+      {
+        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
         return;
       }
-    }
-    else
-    {
-      static const std::string state_name = "one_foot_transition"; //one_foot_start";
-      std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
-      setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
-    }
+      // Update virtual joint transform to fake base
+      goal_state_->updateStateWithFakeBase();
 
-    // Update virtual joint transform to fake base
-    robot_state_->updateStateWithFakeBase();
+      // Error check
+      if (!planning_scene_->isStateValid(*goal_state_, "", check_verbose)) // second argument is what planning group to collision check, "" is everything
+      {
+        ROS_ERROR_STREAM_NAMED("temp","Goal state is not valid!");
 
-    // Visualize
-    if (verbose)
-    {
-      visual_tools_->publishRobotState(robot_state_);
-      std::cout << "Visualizing robot state " << std::endl;
-    }
 
-    ROS_INFO_STREAM_NAMED("temp","Starting to look for goal state...");
-    if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
-    {
-      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
-      return;
+        // Visualize
+        if (verbose || true)
+        {
+          visual_tools_->publishRobotState(goal_state_);
+          std::cout << "Visualizing goal state " << std::endl;
+          ros::Duration(3).sleep();
+        }
+        exit(0);
+      }
     }
-    // Update virtual joint transform to fake base
-    goal_state_->updateStateWithFakeBase();
-
-    if (verbose)
-    {
-      visual_tools_->publishRobotState(goal_state_);
-      ros::Duration(10).sleep();
-    }
+    return; // TEMP
 
     // Plan to pose
     genRandWholeBodyPlan(verbose, use_experience, planning_context_handle, robot_state_, goal_state_);
-
-    /*
-    // Plan back to start
-    std::cout << "Continue planning back to start?" << std::endl;
-    char c = std::cin.get();
-    int mode = c - '0';
-    std::cout << "key: " << c << " mode: " << mode << std::endl;
-    // eat enter key character
-    c = std::cin.get();
-
-    if (mode == 1)
-    genRandWholeBodyPlan(verbose, use_experience, planning_context_handle, goal_state_, robot_state_);
-    */
   }
 
   void genRandWholeBodyPlan(bool verbose, bool use_experience, planning_interface::PlanningContextPtr &planning_context_handle,
@@ -408,7 +440,11 @@ public:
   {
     // Test start state
     if( !humanoid_stability_->isValid(*start_state, true) )
-      ROS_ERROR_STREAM_NAMED("temp","Not valid!!");
+      ROS_ERROR_STREAM_NAMED("temp","Start not valid!!");
+
+    // Test goal state
+    if( !humanoid_stability_->isValid(*goal_state, true) )
+      ROS_ERROR_STREAM_NAMED("temp","Goal not valid!!");
 
 
     // Create motion planning request
@@ -602,7 +638,7 @@ public:
 
   } // function
 
-  // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=2 group:=left_arm verbose:=1
+    // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=2 group:=left_arm verbose:=1
   void displayThunderPlans(int problems, bool verbose)
   {
     // All we care about is the trajectory robot
@@ -632,7 +668,7 @@ public:
 
   } // function
 
-  // Use two IK solvers to find leg positions
+    // Use two IK solvers to find leg positions
   void genRandLegConfigurations()
   {
     /* NOTES
@@ -1003,7 +1039,7 @@ public:
       ROS_ERROR( "Unable to get hrp2jsknt_moveit_demos package path " );
       exit(99);
     }
-    
+
     image_path.append("/resources/room73b2-without-floor.scene");
     visual_tools_->loadCollisionSceneFromFile(image_path, x_offset, y_offset);
   }
