@@ -330,15 +330,16 @@ public:
       std::cout << "Total full planning loop (with debugging and benchmarking) took: " << duration << " seconds" << std::endl;
 
       // Save database periodically
-      int save_every = i / 10 + 10; // problems
+      int save_every = std::min(i / 10 + 10.0, 100.0); // problems
       if ((i+1) % save_every == 0 && (use_experience || true))
       {
         ROS_WARN_STREAM_NAMED("hrp2_demos","Saving experience db...");
         experience_setup->saveIfChanged();
       }
 
-    }
-
+    } // for all runs
+    
+    // Finish the logging file
     logging_file.close();
 
     // Save the solutions to file before shutting down
@@ -363,73 +364,64 @@ public:
     ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random start and goal states");
     int attempts = 10000;
 
-    for (std::size_t i = 0; i < 20; ++i)
+    bool randomStart = true;
+    if (randomStart)
     {
-
-
-      bool randomStart = true;
-      if (randomStart)
+      if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
       {
-        if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
-        {
-          ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
-          return;
-        }
-      }
-      else
-      {
-        static const std::string state_name = "one_foot_transition"; //one_foot_start";
-        std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
-        setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
-      }
-
-      // Update virtual joint transform to fake base
-      robot_state_->updateStateWithFakeBase();
-
-      // Error check
-      bool check_verbose = true;
-      if (!planning_scene_->isStateValid(*robot_state_, "", check_verbose)) // second argument is what planning group to collision check, "" is everything
-      {
-        ROS_ERROR_STREAM_NAMED("temp","Start state is not valid!");
-
-
-        // Visualize
-        if (verbose || true)
-        {
-          visual_tools_->publishRobotState(robot_state_);
-          std::cout << "Visualizing start state " << std::endl;
-          ros::Duration(3.0).sleep();
-        }
-        exit(0);
-      }
-
-      // Get a GOAL state ---------------------------------------------------
-      ROS_INFO_STREAM_NAMED("temp","Starting to look for goal state...");
-      if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
-      {
-        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
+        ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
         return;
       }
-      // Update virtual joint transform to fake base
-      goal_state_->updateStateWithFakeBase();
-
-      // Error check
-      if (!planning_scene_->isStateValid(*goal_state_, "", check_verbose)) // second argument is what planning group to collision check, "" is everything
-      {
-        ROS_ERROR_STREAM_NAMED("temp","Goal state is not valid!");
-
-
-        // Visualize
-        if (verbose || true)
-        {
-          visual_tools_->publishRobotState(goal_state_);
-          std::cout << "Visualizing goal state " << std::endl;
-          ros::Duration(3).sleep();
-        }
-        exit(0);
-      }
     }
-    return; // TEMP
+    else
+    {
+      static const std::string state_name = "one_foot_transition"; //one_foot_start";
+      std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
+      setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
+    }
+
+    // Update virtual joint transform to fake base
+    robot_state_->updateStateWithFakeBase();
+
+    // Error check
+    bool check_verbose = true;
+    if (!planning_scene_->isStateValid(*robot_state_, "", check_verbose)) // second argument is what planning group to collision check, "" is everything
+    {
+      ROS_ERROR_STREAM_NAMED("temp","Start state is not valid!");
+      exit(0);
+    }
+
+    // Visualize
+    if (verbose)
+    {
+      visual_tools_->publishRobotState(robot_state_);
+      std::cout << "Visualizing start state " << std::endl;
+    }
+
+    // Get a GOAL state ---------------------------------------------------
+    ROS_INFO_STREAM_NAMED("temp","Starting to look for goal state...");
+    if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
+    {
+      ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
+      return;
+    }
+    // Update virtual joint transform to fake base
+    goal_state_->updateStateWithFakeBase();
+
+    // Error check
+    if (!planning_scene_->isStateValid(*goal_state_, "", check_verbose)) // second argument is what planning group to collision check, "" is everything
+    {
+      ROS_ERROR_STREAM_NAMED("temp","Goal state is not valid!");
+      exit(0);
+    }
+
+    // Visualize
+    if (verbose)
+    {
+      visual_tools_->publishRobotState(goal_state_);
+      std::cout << "Visualizing goal state " << std::endl;
+    }
+
 
     // Plan to pose
     genRandWholeBodyPlan(verbose, use_experience, planning_context_handle, robot_state_, goal_state_);
@@ -535,9 +527,21 @@ public:
   bool displayThunderDatabase(ompl::tools::ExperienceSetupPtr experience_setup,
                               const ompl_interface::ModelBasedStateSpacePtr model_state_space)
   {
+    // Load planning scene monitor so that we can publish a collision enviornment to rviz
+    if (!loadPlanningSceneMonitor())
+      return false;
+    jskLabCollisionEnvironment(4);
+
     // Get all of the paths in the database
     std::vector<ompl::base::PlannerDataPtr> graphs;
     experience_setup->getAllPlannerDatas(graphs);
+
+    // Error check
+    if (!graphs.size())
+    {
+      ROS_WARN_STREAM_NAMED("temp","Unable to show first state of robot because graph is empty");
+      return false;
+    }
 
     // Load the OMPL visualizer
     if (!ompl_visual_tools_)
@@ -554,6 +558,13 @@ public:
 
     ompl_visual_tools_->publishRobotGraph(graphs[0], tips);
 
+    // Show HRP2 in some pose
+    for (std::size_t i = 0; i < graphs[0]->numVertices() && ros::ok(); ++i)
+    {
+      ompl_visual_tools_->publishRobotState(graphs[0]->getVertex(i).getState());
+      ros::Duration(2).sleep();
+    }
+    
   }
 
   void getNonFixedRobotTips(std::vector<const robot_model::LinkModel*> &tips)
@@ -659,6 +670,7 @@ public:
     thunder->setFile(joint_model_group_->getName());
     thunder->setup(); // must be called before load
 
+    // This is important for creating a fake problem definition
     ob::ScopedState<> start(model_state_space);
     ob::ScopedState<> goal(model_state_space);
     thunder->setStartAndGoalStates(start, goal);
@@ -1022,7 +1034,7 @@ public:
         x_offset = -4.9;
         y_offset = -0.55;
         break;
-      case 4:
+      case 4: // cart
         x_offset = -0.6;
         y_offset = 2.8;
         break;
@@ -1895,107 +1907,46 @@ int main(int argc, char **argv)
   client.setUseThunder(use_thunder);
 
 
-  while (ros::ok()) // continuously prompt user to do demos
+  std::cout << std::endl;
+  ROS_INFO_STREAM_NAMED("hrp2_demos","---------------------------------------------------------------------------------------");
+  switch (mode)
   {
-    bool loop = false;
-    do
-    {
-      std::cout << std::endl;
-      ROS_INFO_STREAM_NAMED("hrp2_demos","---------------------------------------------------------------------------------------");
-      switch (mode)
-      {
-        case 0:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","0 - Quit");
-          exit(0);
-          break;
-        case 1:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","1 - Whole body planning with MoveIt!");
-          client.genRandWholeBodyPlans(problems, verbose, use_experience, use_collisions, variable_obstacles);
-          break;
-        case 2:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","2 - Show the experience database visually in Rviz");
-          client.displayDBPlans(problems, verbose);
-          break;
-        case 3:
-          ROS_WARN_STREAM_NAMED("hrp2_demos","3 - Test foot fixed feature");
-          client.testFixedFootFeature(runs, problems, verbose);
-          break;
-        case 4:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","4 - Plan to a pre-defined crouching position, fixed feet");
-          client.genCrouching();
-          break;
-        case 5:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)");
-          client.genRandLegConfigurations();
-          break;
-        case 6:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","6 - Generate random positions and plan to them with MoveIt");
-          client.genRandMoveItPlan();
-          break;
-        case 7:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","7 - Sample single-foot-fixed poses of robot");
-          client.genRandPoseGrounded(runs, problems, verbose);
-          break;
-        case 8:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");
-          client.genIKRequestsSweep(runs, problems, seed);
-          break;
-
-        case 20:
-        default:
-          ROS_INFO_STREAM_NAMED("hrp2_demos","20 - Loop through all these modes continously");
-          loop = true;
-      }
-
-      // Increment mode if desired
-      if (loop)
-      {
-        mode++;
-        if (mode > 8)
-          mode = 1;
-      }
-    } while (loop && ros::ok());
-
-
-    // Check if ROS is shutting down
-    if (!ros::ok())
+    case 1:
+      ROS_INFO_STREAM_NAMED("hrp2_demos","1 - Whole body planning with MoveIt!");
+      client.genRandWholeBodyPlans(problems, verbose, use_experience, use_collisions, variable_obstacles);
       break;
-
-    /*
-
-    // Prompt user
-    std::cout << "Last mode was " << mode << ". Next demo mode (1-x, 0 to quit):";
-
-    bool valid_mode = false;
-    while (!valid_mode)
-    {
-    // Account for just an enter key being pressed:
-    char c = std::cin.get();
-    if (c == '\n')
-    {
-    std::cout << "ENTER KEY PRESSED " << std::endl;
-    }
-    else
-    {
-    mode = c - '0';
-    std::cout << "key: " << c << " mode: " << mode << std::endl;
-    // eat enter key character
-    c = std::cin.get();
-    }
-
-    // make sure mode is valid
-    if (mode >= 0 && mode <= 9)
-    break;
-    else
-    std::cout << "Invalid mode: " << mode << std::endl;
-    }
-
-    // Exit program
-    if (mode == 9)
-    break;
-    */
-    break;
+    case 2:
+      ROS_INFO_STREAM_NAMED("hrp2_demos","2 - Show the experience database visually in Rviz");
+      client.displayDBPlans(problems, verbose);
+      break;
+    case 3:
+      ROS_WARN_STREAM_NAMED("hrp2_demos","3 - Test foot fixed feature");
+      client.testFixedFootFeature(runs, problems, verbose);
+      break;
+    case 4:
+      ROS_INFO_STREAM_NAMED("hrp2_demos","4 - Plan to a pre-defined crouching position, fixed feet");
+      client.genCrouching();
+      break;
+    case 5:
+      ROS_INFO_STREAM_NAMED("hrp2_demos","5 - Solve for different fixed leg positions using KDL IK (proof of concept for sampler)");
+      client.genRandLegConfigurations();
+      break;
+    case 6:
+      ROS_INFO_STREAM_NAMED("hrp2_demos","6 - Generate random positions and plan to them with MoveIt");
+      client.genRandMoveItPlan();
+      break;
+    case 7:
+      ROS_INFO_STREAM_NAMED("hrp2_demos","7 - Sample single-foot-fixed poses of robot");
+      client.genRandPoseGrounded(runs, problems, verbose);
+      break;
+    case 8:
+      ROS_INFO_STREAM_NAMED("hrp2_demos","8 - Test single arm planning on HRP2 using MoveIt Whole Body IK solver");
+      client.genIKRequestsSweep(runs, problems, seed);
+      break;
+    default:
+      ROS_WARN_STREAM_NAMED("hrp2_demos","Unkown mode: " << mode);
   }
+
 
   ROS_INFO_STREAM("Shutting down.");
   ros::shutdown();
