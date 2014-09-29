@@ -209,7 +209,7 @@ public:
 
   // Whole body planning with MoveIt!
   // roslaunch hrp2jsknt_moveit_demos hrp2_demos.launch mode:=1 verbose:=0 problems:=1 runs:=1 use_experience:=1 use_collisions:=0
-  void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions, bool variable_obstacles)
+  void genRandWholeBodyPlans(int problems, bool verbose, bool use_experience, bool use_collisions, bool variable_obstacles, bool random_start)
   {
 
     // Load planning scene monitor so that we can publish a collision enviornment to rviz
@@ -289,7 +289,7 @@ public:
       std::cout << std::endl;
       std::cout << std::endl;
 
-      genRandWholeBodyPlans(verbose, use_experience, planning_context_handle);
+      genRandWholeBodyPlans(verbose, use_experience, random_start, planning_context_handle);
 
       // Save all contexts to a set
       planning_context_handles.insert(planning_context_handle);
@@ -355,18 +355,18 @@ public:
 
   }
 
-  void genRandWholeBodyPlans(bool verbose, bool use_experience, planning_interface::PlanningContextPtr &planning_context_handle)
+  void genRandWholeBodyPlans(bool verbose, bool use_experience, bool random_start, planning_interface::PlanningContextPtr &planning_context_handle)
   {
     // Create a constraint sampler for random poses
     loadConstraintSampler(verbose); // TODO: this is inefficient, it would be better if we just did this once, but the problem is that changing plannning scenes do not work
 
     // Get a START state ------------------------------------------------------------
-    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random start and goal states");
     int attempts = 10000;
 
-    bool randomStart = true;
-    if (randomStart)
+    if (random_start)
     {
+      ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random start state");
+
       if (!constraint_sampler_->sample(*robot_state_, *robot_state_, attempts))
       {
         ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid start state");
@@ -376,7 +376,7 @@ public:
     else
     {
       static const std::string state_name = "one_foot_transition"; //one_foot_start";
-      std::cout << "Joint model group: " << joint_model_group_->getName() << std::endl;
+      ROS_DEBUG_STREAM_NAMED("hrp2_demos","Using for start state pose: " << state_name);
       setStateToGroupPose(robot_state_,  state_name, joint_model_group_);
     }
 
@@ -399,7 +399,8 @@ public:
     }
 
     // Get a GOAL state ---------------------------------------------------
-    ROS_INFO_STREAM_NAMED("temp","Starting to look for goal state...");
+    ROS_DEBUG_STREAM_NAMED("hrp2_demos","Generating random goal state");
+
     if (!constraint_sampler_->sample(*goal_state_, *goal_state_, attempts))
     {
       ROS_ERROR_STREAM_NAMED("hrp2_demos","Unable to find valid goal state");
@@ -1811,6 +1812,7 @@ int main(int argc, char **argv)
   bool use_collisions = false;
   bool use_thunder = true;
   bool variable_obstacles = false;
+  bool random_start = false;
   std::string planning_group_name = "whole_body";
   std::size_t seed = 0;
   double x = 0;
@@ -1882,6 +1884,13 @@ int main(int argc, char **argv)
       ROS_INFO_STREAM_NAMED("main","Using Thunder (vs. Lightning): " << use_thunder);
     }
 
+    if( std::string(argv[i]).compare("--random_start") == 0 )
+    {
+      ++i;
+      random_start = atoi(argv[i]);
+      ROS_INFO_STREAM_NAMED("main","Using random start state: " << random_start);
+    }
+
     if( std::string(argv[i]).compare("--x") == 0 )
     {
       ++i;
@@ -1913,7 +1922,7 @@ int main(int argc, char **argv)
   {
     case 1:
       ROS_INFO_STREAM_NAMED("hrp2_demos","1 - Whole body planning with MoveIt!");
-      client.genRandWholeBodyPlans(problems, verbose, use_experience, use_collisions, variable_obstacles);
+      client.genRandWholeBodyPlans(problems, verbose, use_experience, use_collisions, variable_obstacles, random_start);
       break;
     case 2:
       ROS_INFO_STREAM_NAMED("hrp2_demos","2 - Show the experience database visually in Rviz");
