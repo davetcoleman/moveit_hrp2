@@ -38,3 +38,4 @@ default_warehouse_mongo_db/
 *.png
 *.jpg
 
+CATKIN_IGNORE
