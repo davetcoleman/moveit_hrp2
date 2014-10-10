@@ -531,7 +531,7 @@ public:
     // Load planning scene monitor so that we can publish a collision enviornment to rviz
     if (!loadPlanningSceneMonitor())
       return false;
-    jskLabCollisionEnvironment(4);
+    jskLabCollisionEnvironment(0);
 
     // Get all of the paths in the database
     std::vector<ompl::base::PlannerDataPtr> graphs;
@@ -563,7 +563,7 @@ public:
     for (std::size_t i = 0; i < graphs[0]->numVertices() && ros::ok(); ++i)
     {
       ompl_visual_tools_->publishRobotState(graphs[0]->getVertex(i).getState());
-      ros::Duration(2).sleep();
+      ros::Duration(0.1).sleep();
     }
     
   }
