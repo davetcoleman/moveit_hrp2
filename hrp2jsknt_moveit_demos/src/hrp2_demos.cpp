@@ -67,7 +67,7 @@
 #include <moveit/constraint_sampler_manager_loader/constraint_sampler_manager_loader.h>
 
 // Helper for Rviz
-#include <moveit_visual_tools/visual_tools.h>
+#include <moveit_visual_tools/moveit_visual_tools.h>
 
 // Random numbers
 #include <random_numbers/random_numbers.h>
@@ -117,7 +117,7 @@ private:
   planning_pipeline::PlanningPipelinePtr planning_pipeline_;
 
   // For visualizing things in rviz
-  moveit_visual_tools::VisualToolsPtr visual_tools_;
+  moveit_visual_tools::MoveItVisualToolsPtr visual_tools_;
 
   // The visual tools for interfacing with Rviz
   ompl_visual_tools::OmplVisualToolsPtr ompl_visual_tools_;
@@ -157,7 +157,7 @@ public:
     goal_state_.reset(new robot_state::RobotState(*robot_state_));
 
     // Load the Robot Viz Tools for publishing to Rviz
-    visual_tools_.reset(new moveit_visual_tools::VisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
+    visual_tools_.reset(new moveit_visual_tools::MoveItVisualTools(BASE_LINK, MARKER_TOPIC, robot_model_));
     visual_tools_->loadRobotStatePub("/hrp2_demos");
     visual_tools_->loadMarkerPub();
     //visual_tools_->loadTrajectoryPub();
@@ -267,7 +267,7 @@ public:
           visual_tools_->removeAllCollisionObjectsPS(); // clear all old collision objects that might be visible in rviz
           ros::Duration(0.25).sleep();
 
-          int location = moveit_visual_tools::VisualTools::iRand(0,4);
+          int location = moveit_visual_tools::MoveItVisualTools::iRand(0,4);
           jskLabCollisionEnvironment(location);
         }
         else if (i == 0) // just publish one coll environment on first go araound
@@ -350,7 +350,7 @@ public:
 
 
       // Display tips of robot from experience database
-      displayThunderDatabase(experience_setup, model_state_space);
+      //displayThunderDatabase(experience_setup, model_state_space);
     }
 
   }
@@ -572,7 +572,7 @@ public:
   {
     // Remove the tip that is fixed to save display time
     joint_model_group_->getEndEffectorTips(tips);
-    std::cout << "Found " << tips.size() << " tips" << std::endl;
+    std::cout << "Found " << tips.size() << " end effector tips" << std::endl;
     std::size_t delete_index = tips.size();
     for (std::size_t i = 0; i < tips.size(); ++i)
     {
@@ -733,8 +733,8 @@ public:
       right_foot_position_new = floor_z * base_link * right_foot_position;
 
       // Show the desired footstep location
-      visual_tools_->publishArrow(left_foot_position_new, moveit_visual_tools::RED, moveit_visual_tools::LARGE);
-      visual_tools_->publishArrow(right_foot_position_new, moveit_visual_tools::GREEN, moveit_visual_tools::LARGE);
+      visual_tools_->publishArrow(left_foot_position_new, rviz_visual_tools::RED, rviz_visual_tools::LARGE);
+      visual_tools_->publishArrow(right_foot_position_new, rviz_visual_tools::GREEN, rviz_visual_tools::LARGE);
 
       // Now solve for one leg
       if (robot_state_->setFromIK(left_leg_group, left_foot_position_new, 10, 0.1))
@@ -1451,8 +1451,8 @@ public:
     Eigen::Quaterniond quat1 = Eigen::Quaterniond(pose1.rotation());
     Eigen::Quaterniond quat2 = Eigen::Quaterniond(pose2.rotation());
 
-    geometry_msgs::Pose p1 = moveit_visual_tools::VisualTools::convertPose(pose1);
-    geometry_msgs::Pose p2 = moveit_visual_tools::VisualTools::convertPose(pose2);
+    geometry_msgs::Pose p1 = moveit_visual_tools::MoveItVisualTools::convertPose(pose1);
+    geometry_msgs::Pose p2 = moveit_visual_tools::MoveItVisualTools::convertPose(pose2);
 
     //double similarity_threshold = 0.01;
     if (
@@ -1490,11 +1490,11 @@ public:
   void setStateXYTheta(robot_state::RobotStatePtr &goal_state)
   {
     double x = goal_state->getVariablePosition("virtual_joint/trans_x");
-    x += moveit_visual_tools::VisualTools::dRand(0,0.25);
+    x += moveit_visual_tools::MoveItVisualTools::dRand(0,0.25);
     goal_state->setVariablePosition("virtual_joint/trans_x",x);
 
     double y = goal_state->getVariablePosition("virtual_joint/trans_y");
-    y += moveit_visual_tools::VisualTools::dRand(0,0.25);
+    y += moveit_visual_tools::MoveItVisualTools::dRand(0,0.25);
     goal_state->setVariablePosition("virtual_joint/trans_y",y);
 
     // Rotation
@@ -1503,7 +1503,7 @@ public:
                               goal_state->getVariablePosition("virtual_joint/rot_x"),
                               goal_state->getVariablePosition("virtual_joint/rot_y"),
                               goal_state->getVariablePosition("virtual_joint/rot_z"));
-    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::VisualTools::dRand(-20,20) * M_PI / 180, Eigen::Vector3f::UnitZ()));
+    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::MoveItVisualTools::dRand(-20,20) * M_PI / 180, Eigen::Vector3f::UnitZ()));
     q = q * rotate;
 
     goal_state->setVariablePosition("virtual_joint/rot_x",q.x());
@@ -1515,12 +1515,12 @@ public:
   void setStateComplex(robot_state::RobotStatePtr &goal_state)
   {
     double x = goal_state->getVariablePosition("virtual_joint/trans_x");
-    //x += moveit_visual_tools::VisualTools::dRand(0,0.25);
+    //x += moveit_visual_tools::MoveItVisualTools::dRand(0,0.25);
     x = 1;
     goal_state->setVariablePosition("virtual_joint/trans_x",x);
 
     double y = goal_state->getVariablePosition("virtual_joint/trans_y");
-    //y += moveit_visual_tools::VisualTools::dRand(0,0.25);
+    //y += moveit_visual_tools::MoveItVisualTools::dRand(0,0.25);
     y = 0.5;
     goal_state->setVariablePosition("virtual_joint/trans_y",y);
 
@@ -1531,7 +1531,7 @@ public:
     goal_state->getVariablePosition("virtual_joint/rot_x"),
     goal_state->getVariablePosition("virtual_joint/rot_y"),
     goal_state->getVariablePosition("virtual_joint/rot_z"));
-    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::VisualTools::dRand(-20,20) * M_PI / 180, Eigen::Vector3f::UnitZ()));
+    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::MoveItVisualTools::dRand(-20,20) * M_PI / 180, Eigen::Vector3f::UnitZ()));
     q = q * rotate;
 
     goal_state->setVariablePosition("virtual_joint/rot_x",q.x());
@@ -1552,15 +1552,15 @@ public:
   void setStateInPlace(robot_state::RobotStatePtr &goal_state)
   {
     double x = goal_state->getVariablePosition("virtual_joint/trans_x");
-    x = moveit_visual_tools::VisualTools::dRand(-1.0,1.0);
+    x = moveit_visual_tools::MoveItVisualTools::dRand(-1.0,1.0);
     goal_state->setVariablePosition("virtual_joint/trans_x",x);
 
     double y = goal_state->getVariablePosition("virtual_joint/trans_y");
-    y = moveit_visual_tools::VisualTools::dRand(-1.0,1.0);
+    y = moveit_visual_tools::MoveItVisualTools::dRand(-1.0,1.0);
     goal_state->setVariablePosition("virtual_joint/trans_y",y);
 
     double z = goal_state->getVariablePosition("virtual_joint/trans_z");
-    z = moveit_visual_tools::VisualTools::dRand(-0.38,0.0);
+    z = moveit_visual_tools::MoveItVisualTools::dRand(-0.38,0.0);
     goal_state->setVariablePosition("virtual_joint/trans_z",z);
 
     // Rotation
@@ -1569,7 +1569,7 @@ public:
                               goal_state->getVariablePosition("virtual_joint/rot_x"),
                               goal_state->getVariablePosition("virtual_joint/rot_y"),
                               goal_state->getVariablePosition("virtual_joint/rot_z"));
-    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::VisualTools::dRand(-15,15) * M_PI / 180, Eigen::Vector3f::UnitZ()));
+    Eigen::Quaternion<float> rotate(Eigen::AngleAxis<float>(moveit_visual_tools::MoveItVisualTools::dRand(-15,15) * M_PI / 180, Eigen::Vector3f::UnitZ()));
     q = q * rotate;
 
     goal_state->setVariablePosition("virtual_joint/rot_x",q.x());
