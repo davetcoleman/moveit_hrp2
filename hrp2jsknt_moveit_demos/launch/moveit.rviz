@@ -5,11 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /MotionPlanning1
-        - /MotionPlanning1/Scene Geometry1
-        - /MotionPlanning1/Scene Robot1
-        - /MotionPlanning1/Planning Request1
         - /MotionPlanning1/Planned Path1
-        - /StateSampler State1
         - /HRP2 Demos Marker1/Namespaces1
         - /TF1/Tree1
       Splitter Ratio: 0.507622
@@ -355,7 +351,7 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-        Loop Animation: true
+        Loop Animation: false
         Robot Alpha: 0.5
         Show Robot Collision: false
         Show Robot Visual: true
@@ -1553,7 +1549,8 @@ Visualization Manager:
       Marker Topic: /hrp2_visual_markers
       Name: HRP2 Demos Marker
       Namespaces:
-        {}
+        Cylinder: true
+        Spheres: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -1593,22 +1590,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 10.8712
+      Distance: 9.93816
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.65576
-        Y: 1.97132
-        Z: -1.3113e-06
+        X: 2.36185
+        Y: 2.32201
+        Z: -1.78814e-06
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.485398
+      Pitch: 0.530398
       Target Frame: BODY
       Value: XYOrbit (rviz)
-      Yaw: 5.43173
+      Yaw: 5.4317
     Saved: ~
 Window Geometry:
   Displays:

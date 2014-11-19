@@ -1,3 +1,4 @@
 set breakpoint pending on
-#break humanoid_model_state_space_factory.cpp:52
+#break planning_scene.cpp:1873
+break humanoid_stability.cpp:137
 #break SPARSdb.cpp:597
